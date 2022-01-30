@@ -11,5 +11,5 @@ namespace pdx12
 		throw std::runtime_error{ ss.str() };
 	}
 
-#define THROW_EXCEPTION(s)	throw_exception(__FILE__,__LINE__,__func__,s);
+#define THROW_PDX12_EXCEPTION(s)	throw_exception(__FILE__,__LINE__,__func__,s);
 }

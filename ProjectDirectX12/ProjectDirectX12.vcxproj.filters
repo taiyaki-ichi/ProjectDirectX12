@@ -6,5 +6,6 @@
   <ItemGroup>
     <ClInclude Include="window.hpp" />
     <ClInclude Include="device.hpp" />
+    <ClInclude Include="utility.hpp" />
   </ItemGroup>
 </Project>

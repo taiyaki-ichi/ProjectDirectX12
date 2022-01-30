@@ -3,6 +3,7 @@
 #include<dxgi1_6.h>
 #include<stdexcept>
 #include<iterator>
+#include"utility.hpp"
 
 #pragma comment(lib,"d3d12.lib")
 #pragma comment(lib,"dxgi.lib")
@@ -18,7 +19,7 @@ namespace pdx12
 		ID3D12Debug* debugLayer = nullptr;
 		if (FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugLayer)))) 
 		{
-			throw std::runtime_error{ "failed D3D12GetDebugInterface" };
+			THROW_PDX12_EXCEPTION("failed D3D12GetDebugInterface");
 		}
 		else 
 		{
@@ -31,7 +32,7 @@ namespace pdx12
 		IDXGIFactory1* factory = nullptr;
 		if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory))))
 		{
-			throw std::runtime_error{ "failed CreateDXGIFactory1" };
+			THROW_PDX12_EXCEPTION("failed CreateDXGIFactory1");
 		}
 
 
@@ -56,7 +57,7 @@ namespace pdx12
 				//å©Ç¬Ç©ÇÁÇ»Ç©Ç¡ÇΩèÍçá
 				if (adapterIndex == DXGI_ERROR_NOT_FOUND)
 				{
-					throw std::runtime_error{ "not found adapter" };
+					THROW_PDX12_EXCEPTION("not found adapter");
 				}
 			}
 		}
@@ -87,7 +88,7 @@ namespace pdx12
 			//ê∂ê¨Ç≈Ç´Ç»Ç©Ç¡ÇΩèÍçáÇÕó·äOÇìäÇ∞ÇÈ
 			if (i == std::size(levels))
 			{
-				throw std::runtime_error{ "failed D3D12CreateDevice" };
+				THROW_PDX12_EXCEPTION("failed D3D12CreateDevice");
 			}
 		}
 
