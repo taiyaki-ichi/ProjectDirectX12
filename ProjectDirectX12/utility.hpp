@@ -1,6 +1,7 @@
 #pragma once
 #include<stdexcept>
 #include<sstream>
+#include<memory>
 
 namespace pdx12
 {
@@ -12,4 +13,17 @@ namespace pdx12
 	}
 
 #define THROW_PDX12_EXCEPTION(s)	throw_exception(__FILE__,__LINE__,__func__,s);
+
+
+
+	template<typename T>
+	struct release_deleter {
+		void operator()(T* ptr) {
+			ptr->Release();
+		}
+	};
+
+	template<typename T>
+	using release_unique_ptr = std::unique_ptr<T, release_deleter<T>>;
+
 }
