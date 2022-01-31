@@ -11,7 +11,7 @@
 namespace pdx12
 {
 	
-	inline ID3D12Device* create_device()
+	inline pdx12::release_unique_ptr<ID3D12Device> create_device()
 	{
 
 		//デバッグモードでコンパイルされた場合
@@ -28,26 +28,32 @@ namespace pdx12
 		}
 #endif
 
+		pdx12::release_unique_ptr<IDXGIFactory1> factory{};
 
-		IDXGIFactory1* factory = nullptr;
-		if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory))))
+		//ファクトリーの作成
 		{
-			THROW_PDX12_EXCEPTION("failed CreateDXGIFactory1");
+			IDXGIFactory1* tmp = nullptr;
+			if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&tmp))))
+			{
+				THROW_PDX12_EXCEPTION("failed CreateDXGIFactory1");
+			}
+			factory.reset(tmp);
 		}
 
 
-		IDXGIAdapter1* adapter = nullptr;
+		pdx12::release_unique_ptr<IDXGIAdapter1> adaptor{};
 
 		//アダプターの作成
 		{
+			IDXGIAdapter1* tmp = nullptr;
 			UINT adapterIndex = 0;
 			DXGI_ADAPTER_DESC1 desc{};
 
 			//adapterIndexで走査し利用できるアダプターを作成する
 			while (true) 
 			{
-				factory->EnumAdapters1(adapterIndex, &adapter);
-				adapter->GetDesc1(&desc);
+				factory->EnumAdapters1(adapterIndex, &tmp);
+				tmp->GetDesc1(&desc);
 
 				//適切なアダプタが見つかった場合
 				if (!(desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE))
@@ -60,25 +66,29 @@ namespace pdx12
 					THROW_PDX12_EXCEPTION("not found adapter");
 				}
 			}
+
+			adaptor.reset(tmp);
 		}
 
 
-		//Direct3Dデバイスが対象する機能を識別する定数をいくつか列挙しておく
-		D3D_FEATURE_LEVEL levels[]={
-			D3D_FEATURE_LEVEL_12_1,
-			D3D_FEATURE_LEVEL_12_0,
-			D3D_FEATURE_LEVEL_11_1,
-			D3D_FEATURE_LEVEL_11_0
-		};
+		pdx12::release_unique_ptr<ID3D12Device> device{};
 
-
-		ID3D12Device* device = nullptr;
-
+		//デバイスの作成
 		{
+			ID3D12Device* tmp = nullptr;
+
+			//Direct3Dデバイスが対象する機能を識別する定数をいくつか列挙しておく
+			D3D_FEATURE_LEVEL levels[] = {
+				D3D_FEATURE_LEVEL_12_1,
+				D3D_FEATURE_LEVEL_12_0,
+				D3D_FEATURE_LEVEL_11_1,
+				D3D_FEATURE_LEVEL_11_0
+			};
+
 			std::size_t i = 0;
 			for (; i < std::size(levels); i++)
 			{
-				if (SUCCEEDED(D3D12CreateDevice(adapter, levels[i], IID_PPV_ARGS(&device))))
+				if (SUCCEEDED(D3D12CreateDevice(adaptor.get(), levels[i], IID_PPV_ARGS(&tmp))))
 				{
 					//作成できたらループを抜ける
 					break;
@@ -90,13 +100,9 @@ namespace pdx12
 			{
 				THROW_PDX12_EXCEPTION("failed D3D12CreateDevice");
 			}
+
+			device.reset(tmp);
 		}
-
-
-		//もう不要なので解放する
-		//TODO: 途中で例外が投げられた際に適切に解放させないのでスマートポインタにする必要あり
-		factory->Release();
-		adapter->Release();
 
 		return device;
 	}
