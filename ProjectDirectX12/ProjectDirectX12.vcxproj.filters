@@ -7,5 +7,6 @@
     <ClInclude Include="window.hpp" />
     <ClInclude Include="device.hpp" />
     <ClInclude Include="utility.hpp" />
+    <ClInclude Include="command_manager.hpp" />
   </ItemGroup>
 </Project>
