@@ -1,6 +1,6 @@
 #pragma once
 #include<d3d12.h>
-#include<dxgi1_6.h>
+#include<dxgi1_4.h>
 #include"utility.hpp"
 
 #pragma comment(lib,"d3d12.lib")

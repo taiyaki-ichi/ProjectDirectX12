@@ -1,6 +1,6 @@
 #pragma once
 #include<d3d12.h>
-#include<dxgi1_6.h>
+#include<dxgi1_4.h>
 #include<stdexcept>
 #include<iterator>
 #include"utility.hpp"
@@ -28,11 +28,11 @@ namespace pdx12
 		}
 #endif
 
-		pdx12::release_unique_ptr<IDXGIFactory1> factory{};
+		pdx12::release_unique_ptr<IDXGIFactory4> factory{};
 
 		//ファクトリーの作成
 		{
-			IDXGIFactory1* tmp = nullptr;
+			IDXGIFactory4* tmp = nullptr;
 			if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&tmp))))
 			{
 				THROW_PDX12_EXCEPTION("failed CreateDXGIFactory1");
@@ -41,18 +41,18 @@ namespace pdx12
 		}
 
 
-		pdx12::release_unique_ptr<IDXGIAdapter1> adaptor{};
+		pdx12::release_unique_ptr<IDXGIAdapter3> adaptor{};
 
 		//アダプターの作成
 		{
-			IDXGIAdapter1* tmp = nullptr;
+			IDXGIAdapter3* tmp = nullptr;
 			UINT adapterIndex = 0;
 			DXGI_ADAPTER_DESC1 desc{};
 
 			//adapterIndexで走査し利用できるアダプターを作成する
 			while (true) 
 			{
-				factory->EnumAdapters1(adapterIndex, &tmp);
+				factory->EnumAdapters1(adapterIndex, (IDXGIAdapter1**)&tmp);
 				tmp->GetDesc1(&desc);
 
 				//適切なアダプタが見つかった場合
