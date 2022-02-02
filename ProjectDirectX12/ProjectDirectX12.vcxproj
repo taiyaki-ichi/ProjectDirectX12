@@ -147,6 +147,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="command_manager.hpp" />
+    <ClInclude Include="create_view.hpp" />
+    <ClInclude Include="descriptor_heap.hpp" />
     <ClInclude Include="device.hpp" />
     <ClInclude Include="swap_chain.hpp" />
     <ClInclude Include="utility.hpp" />
