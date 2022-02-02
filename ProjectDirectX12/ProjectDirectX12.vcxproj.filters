@@ -11,5 +11,6 @@
     <ClInclude Include="swap_chain.hpp" />
     <ClInclude Include="descriptor_heap.hpp" />
     <ClInclude Include="create_view.hpp" />
+    <ClInclude Include="root_signature.hpp" />
   </ItemGroup>
 </Project>

@@ -4,6 +4,7 @@
 #include"swap_chain.hpp"
 #include"descriptor_heap.hpp"
 #include"create_view.hpp"
+#include"root_signature.hpp"
 #include<utility>
 #include<iostream>
 
@@ -33,6 +34,9 @@ int main()
 
 	pdx12::descriptor_heap descriptorHeapCBVSRVUAV{};
 	descriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1);
+
+	auto rootSignature = pdx12::create_root_signature(device.get(), {}, {});
+
 
 	while (pdx12::update_window())
 	{
