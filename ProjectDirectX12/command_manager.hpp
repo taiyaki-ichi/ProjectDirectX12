@@ -51,6 +51,8 @@ namespace pdx12
 
 
 		ID3D12GraphicsCommandList* get_list();
+
+		ID3D12CommandQueue* get_queue();
 	};
 
 
@@ -154,6 +156,12 @@ namespace pdx12
 	inline ID3D12GraphicsCommandList* pdx12::command_manager<AllocatorNum>::get_list()
 	{
 		return list.get();
+	}
+
+	template<std::size_t AllocatorNum>
+	inline ID3D12CommandQueue* pdx12::command_manager<AllocatorNum>::get_queue()
+	{
+		return queue.get();
 	}
 
 }

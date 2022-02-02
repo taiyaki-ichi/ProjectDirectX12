@@ -8,5 +8,6 @@
     <ClInclude Include="device.hpp" />
     <ClInclude Include="utility.hpp" />
     <ClInclude Include="command_manager.hpp" />
+    <ClInclude Include="swap_chain.hpp" />
   </ItemGroup>
 </Project>
