@@ -1,6 +1,7 @@
 #include"window.hpp"
 #include"device.hpp"
 #include"command_manager.hpp"
+#include"swap_chain.hpp"
 #include<utility>
 #include<iostream>
 
@@ -15,6 +16,8 @@ int main()
 
 	pdx12::command_manager<1> commandManager{};
 	commandManager.initialize(device.get());
+
+	auto swapChain = pdx12::create_swap_chain(commandManager.get_queue(), hwnd, DXGI_FORMAT_R8G8B8A8_UNORM, 2);
 
 	while (pdx12::update_window())
 	{
