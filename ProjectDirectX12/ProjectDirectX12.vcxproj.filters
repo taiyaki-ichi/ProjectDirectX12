@@ -9,5 +9,6 @@
     <ClInclude Include="utility.hpp" />
     <ClInclude Include="command_manager.hpp" />
     <ClInclude Include="swap_chain.hpp" />
+    <ClInclude Include="descriptor_heap.hpp" />
   </ItemGroup>
 </Project>
