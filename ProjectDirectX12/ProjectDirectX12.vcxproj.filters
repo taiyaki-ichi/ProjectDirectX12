@@ -14,6 +14,7 @@
     <ClInclude Include="root_signature.hpp" />
     <ClInclude Include="shader.hpp" />
     <ClInclude Include="resource.hpp" />
+    <ClInclude Include="pipeline_state.hpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ShaderFile\SimpleVertexShader.hlsl" />
