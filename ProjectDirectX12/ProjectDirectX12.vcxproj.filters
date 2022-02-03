@@ -13,6 +13,7 @@
     <ClInclude Include="create_view.hpp" />
     <ClInclude Include="root_signature.hpp" />
     <ClInclude Include="shader.hpp" />
+    <ClInclude Include="resource.hpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ShaderFile\SimpleVertexShader.hlsl" />

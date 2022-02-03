@@ -6,6 +6,7 @@
 #include"create_view.hpp"
 #include"root_signature.hpp"
 #include"shader.hpp"
+#include"resource.hpp"
 #include<iostream>
 
 #ifdef _DEBUG
@@ -39,6 +40,27 @@ int main()
 
 	auto vertexShader = pdx12::create_shader(L"ShaderFile/SimpleVertexShader.hlsl", "main", "vs_5_0");
 	auto pixelShader = pdx12::create_shader(L"ShaderFile/SimplePixelShader.hlsl", "main", "ps_5_0");
+
+
+	auto vertexBuffer = pdx12::create_commited_upload_buffer_resource(device.get(), sizeof(float) * 3 * 3);
+	{
+		float* vertexBufferPtr = nullptr;
+		vertexBuffer->Map(0, nullptr, reinterpret_cast<void**>(&vertexBufferPtr));
+
+		//ŽOŠpŒ`
+		vertexBufferPtr[0] = -0.8f;
+		vertexBufferPtr[1] = -0.8f;
+		vertexBufferPtr[2] = 0.f;
+		vertexBufferPtr[3] = -0.8f;
+		vertexBufferPtr[4] = 0.8f;
+		vertexBufferPtr[5] = 0.f;
+		vertexBufferPtr[6] = 0.8f;
+		vertexBufferPtr[7] = -0.8f;
+		vertexBufferPtr[8] = 0.f;
+		vertexBufferPtr[9] = 0.f;
+
+		vertexBuffer->Unmap(0, nullptr);
+	}
 
 
 	while (pdx12::update_window())
