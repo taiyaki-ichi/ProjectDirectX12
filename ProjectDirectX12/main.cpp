@@ -7,6 +7,7 @@
 #include"root_signature.hpp"
 #include"shader.hpp"
 #include"resource.hpp"
+#include"pipeline_state.hpp"
 #include<iostream>
 
 #ifdef _DEBUG
@@ -61,6 +62,11 @@ int main()
 
 		vertexBuffer->Unmap(0, nullptr);
 	}
+
+
+	auto graphicsPipelineState = pdx12::create_graphics_pipeline(device.get(), rootSignature.get(),
+		{ { "POSITION",DXGI_FORMAT_R32G32B32A32_FLOAT } }, { DXGI_FORMAT_R8G8B8A8_UNORM }, { vertexShader.get() }
+	, false, false, D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 
 
 	while (pdx12::update_window())
