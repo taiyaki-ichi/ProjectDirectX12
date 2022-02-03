@@ -5,7 +5,7 @@
 #include"descriptor_heap.hpp"
 #include"create_view.hpp"
 #include"root_signature.hpp"
-#include<utility>
+#include"shader.hpp"
 #include<iostream>
 
 #ifdef _DEBUG
@@ -36,6 +36,9 @@ int main()
 	descriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1);
 
 	auto rootSignature = pdx12::create_root_signature(device.get(), {}, {});
+
+	auto vertexShader = pdx12::create_shader(L"ShaderFile/SimpleVertexShader.hlsl", "main", "vs_5_0");
+	auto pixelShader = pdx12::create_shader(L"ShaderFile/SimplePixelShader.hlsl", "main", "ps_5_0");
 
 
 	while (pdx12::update_window())
