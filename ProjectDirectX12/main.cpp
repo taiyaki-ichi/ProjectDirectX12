@@ -34,18 +34,22 @@ int main()
 
 	pdx12::command_manager<1> commandManager{};
 	commandManager.initialize(device.get());
-
+	
 	auto swapChain = pdx12::create_swap_chain(commandManager.get_queue(), hwnd, FRAME_BUFFER_FORMAT, FRAME_BUFFER_NUM);
-
-	std::array<ID3D12Resource*, FRAME_BUFFER_NUM> frameBufferResources{};
+	
+	std::array<pdx12::release_unique_ptr<ID3D12Resource>, FRAME_BUFFER_NUM> frameBufferResources{};
 	for (std::size_t i = 0; i < FRAME_BUFFER_NUM; i++)
-		swapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&frameBufferResources[i]));
-
+	{
+		ID3D12Resource* tmp = nullptr;
+		swapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&tmp));
+		frameBufferResources[i].reset(tmp);
+	}
+	
 	pdx12::descriptor_heap descriptorHeapRTV{};
 	descriptorHeapRTV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV, FRAME_BUFFER_NUM);
 
 	for (std::size_t i = 0; i < FRAME_BUFFER_NUM; i++)
-		pdx12::create_texture2D_RTV(device.get(), descriptorHeapRTV.get_CPU_handle(i), frameBufferResources[i], FRAME_BUFFER_FORMAT, 1, 1);
+		pdx12::create_texture2D_RTV(device.get(), descriptorHeapRTV.get_CPU_handle(i), frameBufferResources[i].get(), FRAME_BUFFER_FORMAT, 0, 0);
 
 	auto rootSignature = pdx12::create_root_signature(device.get(), {}, {});
 
@@ -67,20 +71,19 @@ int main()
 		vertexBufferPtr[6] = 0.8f;
 		vertexBufferPtr[7] = -0.8f;
 		vertexBufferPtr[8] = 0.f;
-		vertexBufferPtr[9] = 0.f;
 
 		vertexBuffer->Unmap(0, nullptr);
 	}
 
 
 	auto graphicsPipelineState = pdx12::create_graphics_pipeline(device.get(), rootSignature.get(),
-		{ { "POSITION",DXGI_FORMAT_R32G32B32A32_FLOAT } }, { DXGI_FORMAT_R8G8B8A8_UNORM }, { vertexShader.get() }
+		{ { "POSITION",DXGI_FORMAT_R32G32B32_FLOAT } }, { FRAME_BUFFER_FORMAT }, { vertexShader.get(),pixelShader.get() }
 	, false, false, D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
-
+	
 	D3D12_VIEWPORT viewport{ 0,0, static_cast<float>(WINDOW_WIDTH),static_cast<float>(WINDOW_HEIGHT),0.f,1.f };
 	D3D12_RECT scissorRect{ 0,0,static_cast<LONG>(WINDOW_WIDTH),static_cast<LONG>(WINDOW_HEIGHT) };
 
-
+	
 	while (pdx12::update_window())
 	{
 		auto backBufferIndex = swapChain->GetCurrentBackBufferIndex();
@@ -94,12 +97,17 @@ int main()
 			D3D12_RESOURCE_BARRIER barrier{};
 			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 			barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-			barrier.Transition.pResource = frameBufferResources[backBufferIndex];
+			barrier.Transition.pResource = frameBufferResources[backBufferIndex].get();
 			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
 			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 			barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
 			commandManager.get_list()->ResourceBarrier(1, &barrier);
+		}
+
+		{
+			std::array<float, 4> clearColor{ 0.5f,0.5f,0.5f,1.f };
+			commandManager.get_list()->ClearRenderTargetView(descriptorHeapRTV.get_CPU_handle(backBufferIndex), clearColor.data(), 0, nullptr);
 		}
 
 		auto backBufferCPUHandle = descriptorHeapRTV.get_CPU_handle(backBufferIndex);
@@ -124,7 +132,7 @@ int main()
 			D3D12_RESOURCE_BARRIER barrier{};
 			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 			barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-			barrier.Transition.pResource = frameBufferResources[backBufferIndex];
+			barrier.Transition.pResource = frameBufferResources[backBufferIndex].get();
 			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COMMON;
 			barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
@@ -139,6 +147,6 @@ int main()
 
 		swapChain->Present(1, 0);
 	}
-
+	
 	return 0;
 }
