@@ -20,10 +20,8 @@
 
 using namespace DirectX;
 
-//モデルに渡す用のデータ
-struct ModelData
+struct SceneData
 {
-	XMMATRIX world;
 	XMMATRIX view;
 	XMMATRIX proj;
 };
@@ -91,7 +89,7 @@ int main()
 	triangleVertexBufferView.SizeInBytes = sizeof(float) * 3 * mesh.Vertices.size();
 	triangleVertexBufferView.StrideInBytes = sizeof(float) * 3;
 
-	auto rootSignature = pdx12::create_root_signature(device.get(), { {D3D12_DESCRIPTOR_RANGE_TYPE_CBV} }, {});
+	auto rootSignature = pdx12::create_root_signature(device.get(), { {D3D12_DESCRIPTOR_RANGE_TYPE_CBV,D3D12_DESCRIPTOR_RANGE_TYPE_CBV} }, {});
 
 	auto graphicsPipelineState = pdx12::create_graphics_pipeline(device.get(), rootSignature.get(),
 		{ { "POSITION",DXGI_FORMAT_R32G32B32_FLOAT } }, { FRAME_BUFFER_FORMAT }, { vertexShader.get(),pixelShader.get() }
@@ -111,24 +109,31 @@ int main()
 		100.f
 	);
 
-	ModelData modelData{
-		XMMatrixScaling(10.f,10.f,10.f),
+	SceneData sceneData{
 		view,
 		proj
 	};
 
-	auto worldMatrixBufferResource = pdx12::create_commited_upload_buffer_resource(device.get(), pdx12::alignment<UINT64>(sizeof(ModelData), 256));
-	ModelData* mappedModelDataPtr = nullptr;
-	worldMatrixBufferResource.first->Map(0, nullptr, reinterpret_cast<void**>(&mappedModelDataPtr));
+	XMMATRIX world = XMMatrixScaling(10.f, 10.f, 10.f);
 
-	pdx12::descriptor_heap worldDescriptorHeap{};
-	worldDescriptorHeap.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1);
-	pdx12::create_CBV(device.get(), worldDescriptorHeap.get_CPU_handle(0), worldMatrixBufferResource.first.get(), pdx12::alignment<UINT64>(sizeof(ModelData), 256));
+	auto sceneDataBufferResource = pdx12::create_commited_upload_buffer_resource(device.get(), pdx12::alignment<UINT64>(sizeof(SceneData), 256));
+	SceneData* mappedSceneDataPtr = nullptr;
+	sceneDataBufferResource.first->Map(0, nullptr, reinterpret_cast<void**>(&mappedSceneDataPtr));
+	*mappedSceneDataPtr = sceneData;
+
+	auto worldBufferResource = pdx12::create_commited_upload_buffer_resource(device.get(), pdx12::alignment<UINT64>(sizeof(XMMATRIX), 256));
+	XMMATRIX* mappedWorldPtr = nullptr;
+	worldBufferResource.first->Map(0, nullptr, reinterpret_cast<void**>(&mappedWorldPtr));
+
+	pdx12::descriptor_heap descriptorHeapCBVSRVUAV{};
+	descriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 2);
+	pdx12::create_CBV(device.get(), descriptorHeapCBVSRVUAV.get_CPU_handle(0), sceneDataBufferResource.first.get(), pdx12::alignment<UINT64>(sizeof(SceneData), 256));
+	pdx12::create_CBV(device.get(), descriptorHeapCBVSRVUAV.get_CPU_handle(1), worldBufferResource.first.get(), pdx12::alignment<UINT64>(sizeof(XMMATRIX), 256));
 	
 	while (pdx12::update_window())
 	{
-		modelData.world *= XMMatrixRotationY(0.01f);
-		*mappedModelDataPtr = modelData;
+		world *= XMMatrixRotationY(0.01f);
+		*mappedWorldPtr = world;
 
 		auto backBufferIndex = swapChain->GetCurrentBackBufferIndex();
 
@@ -149,10 +154,10 @@ int main()
 
 		commandManager.get_list()->SetGraphicsRootSignature(rootSignature.get());
 		{
-			auto ptr = worldDescriptorHeap.get();
+			auto ptr = descriptorHeapCBVSRVUAV.get();
 			commandManager.get_list()->SetDescriptorHeaps(1, &ptr);
 		}
-		commandManager.get_list()->SetGraphicsRootDescriptorTable(0, worldDescriptorHeap.get_GPU_handle(0));
+		commandManager.get_list()->SetGraphicsRootDescriptorTable(0, descriptorHeapCBVSRVUAV.get_GPU_handle(0));
 		commandManager.get_list()->SetPipelineState(graphicsPipelineState.get());
 		commandManager.get_list()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 

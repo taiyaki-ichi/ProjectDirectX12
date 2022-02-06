@@ -1,14 +1,13 @@
 
-struct ModelData
+cbuffer SceneData : register(b0)
 {
-	matrix world;
 	matrix view;
 	matrix proj;
 };
 
-ModelData modelData : register(b0);
+matrix world : register(b1);
 
 float4 main( float4 pos : POSITION ) : SV_POSITION
 {
-	return mul(mul(modelData.proj, modelData.view), mul(modelData.world,pos));
+	return mul(mul(proj, view), mul(world,pos));
 }
