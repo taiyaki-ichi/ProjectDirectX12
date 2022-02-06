@@ -24,6 +24,7 @@ struct SceneData
 {
 	XMMATRIX view;
 	XMMATRIX proj;
+	XMFLOAT3 lightDir;
 };
 
 int main()
@@ -69,16 +70,19 @@ int main()
 	bool loadout = Loader.LoadFile("3DModel/bun_zipper.obj");
 	objl::Mesh mesh = Loader.LoadedMeshes[0];
 
-	auto vertexBuffer = pdx12::create_commited_upload_buffer_resource(device.get(), sizeof(float) * 3 * mesh.Vertices.size());
+	auto vertexBuffer = pdx12::create_commited_upload_buffer_resource(device.get(), sizeof(float) * 6 * mesh.Vertices.size());
 	{
 		float* vertexBufferPtr = nullptr;
 		vertexBuffer.first->Map(0, nullptr, reinterpret_cast<void**>(&vertexBufferPtr));
 
 		for (std::size_t i = 0; i < mesh.Vertices.size(); i++)
 		{
-			vertexBufferPtr[i * 3] = mesh.Vertices[i].Position.X;
-			vertexBufferPtr[i * 3 + 1] = mesh.Vertices[i].Position.Y;
-			vertexBufferPtr[i * 3 + 2] = mesh.Vertices[i].Position.Z;
+			vertexBufferPtr[i * 6] = mesh.Vertices[i].Position.X;
+			vertexBufferPtr[i * 6 + 1] = mesh.Vertices[i].Position.Y;
+			vertexBufferPtr[i * 6 + 2] = mesh.Vertices[i].Position.Z;
+			vertexBufferPtr[i * 6 + 3] = mesh.Vertices[i].Normal.X;
+			vertexBufferPtr[i * 6 + 4] = mesh.Vertices[i].Normal.Y;
+			vertexBufferPtr[i * 6 + 5] = mesh.Vertices[i].Normal.Z;
 		}
 
 		vertexBuffer.first->Unmap(0, nullptr);
@@ -86,13 +90,13 @@ int main()
 
 	D3D12_VERTEX_BUFFER_VIEW triangleVertexBufferView{};
 	triangleVertexBufferView.BufferLocation = vertexBuffer.first->GetGPUVirtualAddress();
-	triangleVertexBufferView.SizeInBytes = sizeof(float) * 3 * mesh.Vertices.size();
-	triangleVertexBufferView.StrideInBytes = sizeof(float) * 3;
+	triangleVertexBufferView.SizeInBytes = sizeof(float) * 6 * mesh.Vertices.size();
+	triangleVertexBufferView.StrideInBytes = sizeof(float) * 6;
 
 	auto rootSignature = pdx12::create_root_signature(device.get(), { {D3D12_DESCRIPTOR_RANGE_TYPE_CBV,D3D12_DESCRIPTOR_RANGE_TYPE_CBV} }, {});
 
 	auto graphicsPipelineState = pdx12::create_graphics_pipeline(device.get(), rootSignature.get(),
-		{ { "POSITION",DXGI_FORMAT_R32G32B32_FLOAT } }, { FRAME_BUFFER_FORMAT }, { vertexShader.get(),pixelShader.get() }
+		{ { "POSITION",DXGI_FORMAT_R32G32B32_FLOAT },{ "NORMAL",DXGI_FORMAT_R32G32B32_FLOAT } }, { FRAME_BUFFER_FORMAT }, { vertexShader.get(),pixelShader.get() }
 	, false, false, D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 	
 	D3D12_VIEWPORT viewport{ 0,0, static_cast<float>(WINDOW_WIDTH),static_cast<float>(WINDOW_HEIGHT),0.f,1.f };
@@ -108,10 +112,12 @@ int main()
 		0.01f,
 		100.f
 	);
+	XMFLOAT3 lightDir{ 1.f,1.f,1.f };
 
 	SceneData sceneData{
 		view,
-		proj
+		proj,
+		lightDir
 	};
 
 	XMMATRIX world = XMMatrixScaling(10.f, 10.f, 10.f);

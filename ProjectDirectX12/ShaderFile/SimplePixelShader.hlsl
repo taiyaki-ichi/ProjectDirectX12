@@ -1,4 +1,9 @@
-float4 main() : SV_TARGET
+#include"SimpleHeader.hlsli"
+
+float4 main(VSOutput input) : SV_TARGET
 {
-	return float4(1.0f, 1.0f, 1.0f, 1.0f);
+	float3 diffuse = float3(0.3f, 0.3f, 0.3f) * saturate(dot(input.normal.xyz, normalize(lightDir)));
+	float3 ambient = float3(0.6f, 0.6f, 0.6f);
+
+	return float4(ambient + diffuse, 1);
 }

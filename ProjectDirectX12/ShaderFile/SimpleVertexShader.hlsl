@@ -1,13 +1,10 @@
+#include"SimpleHeader.hlsli"
 
-cbuffer SceneData : register(b0)
+VSOutput main(float4 pos : POSITION, float4 normal : NORMAL) 
 {
-	matrix view;
-	matrix proj;
-};
-
-matrix world : register(b1);
-
-float4 main( float4 pos : POSITION ) : SV_POSITION
-{
-	return mul(mul(proj, view), mul(world,pos));
+	VSOutput output;
+	output.pos = mul(mul(proj, view), mul(world, pos));
+	normal.w = 0.f;
+	output.normal = mul(world, normal);
+	return output;
 }
