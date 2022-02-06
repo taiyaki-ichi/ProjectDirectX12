@@ -1,0 +1,3 @@
+[submodule "ProjectDirectX12/OBJ-Loader"]
+	path = ProjectDirectX12/OBJ-Loader
+	url = https://github.com/Bly7/OBJ-Loader.git
