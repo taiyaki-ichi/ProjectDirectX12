@@ -18,13 +18,21 @@
 #include <crtdbg.h>
 #endif
 
+using namespace DirectX;
+
+//モデルに渡す用のデータ
+struct ModelData
+{
+	XMMATRIX world;
+	XMMATRIX view;
+	XMMATRIX proj;
+};
+
 int main()
 {
 #ifdef _DEBUG
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
-
-	using namespace DirectX;
 
 	constexpr std::size_t WINDOW_WIDTH = 500;
 	constexpr std::size_t WINDOW_HEIGHT = 500;
@@ -83,16 +91,6 @@ int main()
 	triangleVertexBufferView.SizeInBytes = sizeof(float) * 3 * mesh.Vertices.size();
 	triangleVertexBufferView.StrideInBytes = sizeof(float) * 3;
 
-	XMMATRIX worldMatrix = XMMatrixScaling(10, 10, 10);;
-
-	auto worldMatrixBufferResource = pdx12::create_commited_upload_buffer_resource(device.get(), pdx12::alignment<UINT64>(sizeof(worldMatrix), 256));
-	XMMATRIX* worldMatrixPtr = nullptr;
-	worldMatrixBufferResource.first->Map(0, nullptr, reinterpret_cast<void**>(&worldMatrixPtr));
-
-	pdx12::descriptor_heap worldDescriptorHeap{};
-	worldDescriptorHeap.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1);
-	pdx12::create_CBV(device.get(), worldDescriptorHeap.get_CPU_handle(0), worldMatrixBufferResource.first.get(), pdx12::alignment<UINT64>(sizeof(worldMatrix), 256));
-
 	auto rootSignature = pdx12::create_root_signature(device.get(), { {D3D12_DESCRIPTOR_RANGE_TYPE_CBV} }, {});
 
 	auto graphicsPipelineState = pdx12::create_graphics_pipeline(device.get(), rootSignature.get(),
@@ -102,11 +100,35 @@ int main()
 	D3D12_VIEWPORT viewport{ 0,0, static_cast<float>(WINDOW_WIDTH),static_cast<float>(WINDOW_HEIGHT),0.f,1.f };
 	D3D12_RECT scissorRect{ 0,0,static_cast<LONG>(WINDOW_WIDTH),static_cast<LONG>(WINDOW_HEIGHT) };
 
+	XMFLOAT3 eye{ 0,2.f,2.f };
+	XMFLOAT3 target{ 0,0.1,0 };
+	XMFLOAT3 up{ 0,1,0 };
+	auto view = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
+	auto proj = DirectX::XMMatrixPerspectiveFovLH(
+		DirectX::XM_PIDIV2,
+		static_cast<float>(WINDOW_WIDTH) / static_cast<float>(WINDOW_HEIGHT),
+		0.01f,
+		100.f
+	);
+
+	ModelData modelData{
+		XMMatrixScaling(10.f,10.f,10.f),
+		view,
+		proj
+	};
+
+	auto worldMatrixBufferResource = pdx12::create_commited_upload_buffer_resource(device.get(), pdx12::alignment<UINT64>(sizeof(ModelData), 256));
+	ModelData* mappedModelDataPtr = nullptr;
+	worldMatrixBufferResource.first->Map(0, nullptr, reinterpret_cast<void**>(&mappedModelDataPtr));
+
+	pdx12::descriptor_heap worldDescriptorHeap{};
+	worldDescriptorHeap.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1);
+	pdx12::create_CBV(device.get(), worldDescriptorHeap.get_CPU_handle(0), worldMatrixBufferResource.first.get(), pdx12::alignment<UINT64>(sizeof(ModelData), 256));
 	
 	while (pdx12::update_window())
 	{
-		worldMatrix *= XMMatrixRotationY(0.01f);
-		*worldMatrixPtr = worldMatrix;
+		modelData.world *= XMMatrixRotationY(0.01f);
+		*mappedModelDataPtr = modelData;
 
 		auto backBufferIndex = swapChain->GetCurrentBackBufferIndex();
 
