@@ -25,6 +25,8 @@ struct SceneData
 	XMMATRIX view;
 	XMMATRIX proj;
 	XMFLOAT3 lightDir;
+	float hoge;
+	XMFLOAT3 eye;
 };
 
 int main()
@@ -132,7 +134,9 @@ int main()
 	SceneData sceneData{
 		view,
 		proj,
-		lightDir
+		lightDir,
+		0.f,
+		eye
 	};
 
 	XMMATRIX world = XMMatrixScaling(10.f, 10.f, 10.f);
