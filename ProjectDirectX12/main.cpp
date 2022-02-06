@@ -37,19 +37,19 @@ int main()
 	
 	auto swapChain = pdx12::create_swap_chain(commandManager.get_queue(), hwnd, FRAME_BUFFER_FORMAT, FRAME_BUFFER_NUM);
 	
-	std::array<pdx12::release_unique_ptr<ID3D12Resource>, FRAME_BUFFER_NUM> frameBufferResources{};
+	std::array<std::pair<pdx12::release_unique_ptr<ID3D12Resource>,D3D12_RESOURCE_STATES>, FRAME_BUFFER_NUM> frameBufferResources{};
 	for (std::size_t i = 0; i < FRAME_BUFFER_NUM; i++)
 	{
 		ID3D12Resource* tmp = nullptr;
 		swapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&tmp));
-		frameBufferResources[i].reset(tmp);
+		frameBufferResources[i] = std::make_pair(pdx12::release_unique_ptr<ID3D12Resource>{tmp}, D3D12_RESOURCE_STATE_COMMON);
 	}
 	
 	pdx12::descriptor_heap descriptorHeapRTV{};
 	descriptorHeapRTV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV, FRAME_BUFFER_NUM);
 
 	for (std::size_t i = 0; i < FRAME_BUFFER_NUM; i++)
-		pdx12::create_texture2D_RTV(device.get(), descriptorHeapRTV.get_CPU_handle(i), frameBufferResources[i].get(), FRAME_BUFFER_FORMAT, 0, 0);
+		pdx12::create_texture2D_RTV(device.get(), descriptorHeapRTV.get_CPU_handle(i), frameBufferResources[i].first.get(), FRAME_BUFFER_FORMAT, 0, 0);
 
 	auto rootSignature = pdx12::create_root_signature(device.get(), {}, {});
 
@@ -59,7 +59,7 @@ int main()
 	auto vertexBuffer = pdx12::create_commited_upload_buffer_resource(device.get(), sizeof(float) * 3 * 3);
 	{
 		float* vertexBufferPtr = nullptr;
-		vertexBuffer->Map(0, nullptr, reinterpret_cast<void**>(&vertexBufferPtr));
+		vertexBuffer.first->Map(0, nullptr, reinterpret_cast<void**>(&vertexBufferPtr));
 
 		//ŽOŠpŒ`
 		vertexBufferPtr[0] = -0.8f;
@@ -72,7 +72,7 @@ int main()
 		vertexBufferPtr[7] = -0.8f;
 		vertexBufferPtr[8] = 0.f;
 
-		vertexBuffer->Unmap(0, nullptr);
+		vertexBuffer.first->Unmap(0, nullptr);
 	}
 
 
@@ -93,6 +93,7 @@ int main()
 		commandManager.get_list()->RSSetViewports(1, &viewport);
 		commandManager.get_list()->RSSetScissorRects(1, &scissorRect);
 
+		/*
 		{
 			D3D12_RESOURCE_BARRIER barrier{};
 			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -104,6 +105,8 @@ int main()
 
 			commandManager.get_list()->ResourceBarrier(1, &barrier);
 		}
+		*/
+		pdx12::resource_barrior(commandManager.get_list(), frameBufferResources[backBufferIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 		{
 			std::array<float, 4> clearColor{ 0.5f,0.5f,0.5f,1.f };
@@ -119,7 +122,7 @@ int main()
 
 		{
 			D3D12_VERTEX_BUFFER_VIEW vbv{};
-			vbv.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
+			vbv.BufferLocation = vertexBuffer.first->GetGPUVirtualAddress();
 			vbv.SizeInBytes = sizeof(float) * 3 * 3;
 			vbv.StrideInBytes = sizeof(float) * 3;
 
@@ -128,6 +131,7 @@ int main()
 
 		commandManager.get_list()->DrawInstanced(3, 1, 0, 0);
 
+		/*
 		{
 			D3D12_RESOURCE_BARRIER barrier{};
 			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -139,6 +143,8 @@ int main()
 
 			commandManager.get_list()->ResourceBarrier(1, &barrier);
 		}
+		*/
+		pdx12::resource_barrior(commandManager.get_list(), frameBufferResources[backBufferIndex], D3D12_RESOURCE_STATE_COMMON);
 
 		commandManager.get_list()->Close();
 		commandManager.excute();
