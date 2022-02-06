@@ -9,7 +9,7 @@
 namespace pdx12
 {
 
-	inline release_unique_ptr<ID3D12Resource> create_commited_upload_buffer_resource(ID3D12Device* device, UINT64 size)
+	inline std::pair<release_unique_ptr<ID3D12Resource>, D3D12_RESOURCE_STATES> create_commited_upload_buffer_resource(ID3D12Device* device, UINT64 size)
 	{
 		D3D12_HEAP_PROPERTIES heapProperties{};
 		heapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
@@ -25,24 +25,28 @@ namespace pdx12
 		resourceDesc.SampleDesc.Count = 1;
 		resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 		resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	
+
 		ID3D12Resource* tmp = nullptr;
+
+		//D3D12_HEAP_TYPE_UPLOADの場合の初期状態はD3D12_RESOURCE_STATE_GENERIC_READ
+		D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
+
 		if (FAILED(device->CreateCommittedResource(
 			&heapProperties,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
-			D3D12_RESOURCE_STATE_GENERIC_READ,//D3D12_HEAP_TYPE_UPLOADの場合はD3D12_RESOURCE_STATE_GENERIC_READ
+			initialState,
 			nullptr,
 			IID_PPV_ARGS(&tmp))))
 		{
 			THROW_PDX12_EXCEPTION("failed CreateCommittedResource");
 		}
 
-		return release_unique_ptr<ID3D12Resource>{tmp};
+		return { release_unique_ptr<ID3D12Resource>{tmp}, initialState };
 	}
 
 
-	inline release_unique_ptr<ID3D12Resource> create_commited_texture_resource(ID3D12Device* device,
+	inline std::pair<release_unique_ptr<ID3D12Resource>, D3D12_RESOURCE_STATES> create_commited_texture_resource(ID3D12Device* device,
 		DXGI_FORMAT format, UINT64 width, UINT64 height, std::size_t dimension, UINT16 depthOrArraySize, UINT16 mipLevels,D3D12_RESOURCE_FLAGS flags)
 	{
 		D3D12_HEAP_PROPERTIES heapProperties{};
@@ -76,18 +80,37 @@ namespace pdx12
 		}
 
 		ID3D12Resource* tmp = nullptr;
+		D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
+
 		if (FAILED(device->CreateCommittedResource(
 			&heapProperties,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
-			D3D12_RESOURCE_STATE_COMMON,
+			initialState,
 			nullptr,
 			IID_PPV_ARGS(&tmp))))
 		{
 			THROW_PDX12_EXCEPTION("failed CreateCommittedResource");
 		}
 
-		return release_unique_ptr<ID3D12Resource>{tmp};
+		return { release_unique_ptr<ID3D12Resource>{tmp},initialState };
 	}
 
+
+	//リソースバリアを作成しresource.secondを更新
+	inline void resource_barrior(ID3D12GraphicsCommandList* list,
+		std::pair<release_unique_ptr<ID3D12Resource>, D3D12_RESOURCE_STATES>& resource, D3D12_RESOURCE_STATES afterState)
+	{
+		D3D12_RESOURCE_BARRIER barrier{};
+		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		barrier.Transition.pResource = resource.first.get();
+		barrier.Transition.StateBefore = resource.second;
+		barrier.Transition.StateAfter = afterState;
+		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+			
+		list->ResourceBarrier(1, &barrier);
+
+		resource.second = afterState;
+	}
 }
