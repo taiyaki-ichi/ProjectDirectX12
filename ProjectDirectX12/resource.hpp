@@ -47,7 +47,7 @@ namespace pdx12
 
 
 	inline std::pair<release_unique_ptr<ID3D12Resource>, D3D12_RESOURCE_STATES> create_commited_texture_resource(ID3D12Device* device,
-		DXGI_FORMAT format, UINT64 width, UINT64 height, std::size_t dimension, UINT16 depthOrArraySize, UINT16 mipLevels,D3D12_RESOURCE_FLAGS flags)
+		DXGI_FORMAT format, UINT64 width, UINT64 height, std::size_t dimension, UINT16 depthOrArraySize, UINT16 mipLevels,D3D12_RESOURCE_FLAGS flags,D3D12_CLEAR_VALUE const* clearValue=nullptr)
 	{
 		D3D12_HEAP_PROPERTIES heapProperties{};
 		heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
@@ -87,7 +87,7 @@ namespace pdx12
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
 			initialState,
-			nullptr,
+			clearValue,
 			IID_PPV_ARGS(&tmp))))
 		{
 			THROW_PDX12_EXCEPTION("failed CreateCommittedResource");

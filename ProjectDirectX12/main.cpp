@@ -62,6 +62,21 @@ int main()
 	for (std::size_t i = 0; i < FRAME_BUFFER_NUM; i++)
 		pdx12::create_texture2D_RTV(device.get(), descriptorHeapRTV.get_CPU_handle(i), frameBufferResources[i].first.get(), FRAME_BUFFER_FORMAT, 0, 0);
 
+	pdx12::descriptor_heap descriptorHeapDSV{};
+	descriptorHeapDSV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_DSV, FRAME_BUFFER_NUM);
+
+	D3D12_CLEAR_VALUE depthStencilClearValue{};
+	depthStencilClearValue.Format = DXGI_FORMAT_D32_FLOAT;
+	depthStencilClearValue.DepthStencil.Depth = 1.f;
+
+	std::array<std::pair<pdx12::release_unique_ptr<ID3D12Resource>, D3D12_RESOURCE_STATES>, FRAME_BUFFER_NUM> depthBuffers{};
+	for (std::size_t i = 0; i < FRAME_BUFFER_NUM; i++)
+		depthBuffers[i] = pdx12::create_commited_texture_resource(device.get(), DXGI_FORMAT_D32_FLOAT, WINDOW_WIDTH, WINDOW_HEIGHT, 
+			2, 1, 1, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL,&depthStencilClearValue);
+
+	for (std::size_t i = 0; i < FRAME_BUFFER_NUM; i++)
+		pdx12::create_texture2D_DSV(device.get(), descriptorHeapDSV.get_CPU_handle(i), depthBuffers[i].first.get(), DXGI_FORMAT_D32_FLOAT, 0);
+
 	auto vertexShader = pdx12::create_shader(L"ShaderFile/SimpleVertexShader.hlsl", "main", "vs_5_0");
 	auto pixelShader = pdx12::create_shader(L"ShaderFile/SimplePixelShader.hlsl", "main", "ps_5_0");
 
@@ -97,7 +112,7 @@ int main()
 
 	auto graphicsPipelineState = pdx12::create_graphics_pipeline(device.get(), rootSignature.get(),
 		{ { "POSITION",DXGI_FORMAT_R32G32B32_FLOAT },{ "NORMAL",DXGI_FORMAT_R32G32B32_FLOAT } }, { FRAME_BUFFER_FORMAT }, { vertexShader.get(),pixelShader.get() }
-	, false, false, D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+	, true, false, D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 	
 	D3D12_VIEWPORT viewport{ 0,0, static_cast<float>(WINDOW_WIDTH),static_cast<float>(WINDOW_HEIGHT),0.f,1.f };
 	D3D12_RECT scissorRect{ 0,0,static_cast<LONG>(WINDOW_WIDTH),static_cast<LONG>(WINDOW_HEIGHT) };
@@ -155,8 +170,12 @@ int main()
 			commandManager.get_list()->ClearRenderTargetView(descriptorHeapRTV.get_CPU_handle(backBufferIndex), clearColor.data(), 0, nullptr);
 		}
 
+		pdx12::resource_barrior(commandManager.get_list(), depthBuffers[backBufferIndex], D3D12_RESOURCE_STATE_DEPTH_WRITE);
+		commandManager.get_list()->ClearDepthStencilView(descriptorHeapDSV.get_CPU_handle(backBufferIndex), D3D12_CLEAR_FLAG_DEPTH, 1.f, 0.f, 0, nullptr);
+
 		auto backBufferCPUHandle = descriptorHeapRTV.get_CPU_handle(backBufferIndex);
-		commandManager.get_list()->OMSetRenderTargets(1, &backBufferCPUHandle, 0, nullptr);
+		auto depthBufferCPUHandle = descriptorHeapDSV.get_CPU_handle(backBufferIndex);
+		commandManager.get_list()->OMSetRenderTargets(1, &backBufferCPUHandle, false, &depthBufferCPUHandle);
 
 		commandManager.get_list()->SetGraphicsRootSignature(rootSignature.get());
 		{
@@ -172,6 +191,7 @@ int main()
 		commandManager.get_list()->DrawInstanced(mesh.Vertices.size(), 1, 0, 0);
 
 		pdx12::resource_barrior(commandManager.get_list(), frameBufferResources[backBufferIndex], D3D12_RESOURCE_STATE_COMMON);
+		pdx12::resource_barrior(commandManager.get_list(), depthBuffers[backBufferIndex], D3D12_RESOURCE_STATE_COMMON);
 
 		commandManager.get_list()->Close();
 		commandManager.excute();
