@@ -93,19 +93,6 @@ int main()
 		commandManager.get_list()->RSSetViewports(1, &viewport);
 		commandManager.get_list()->RSSetScissorRects(1, &scissorRect);
 
-		/*
-		{
-			D3D12_RESOURCE_BARRIER barrier{};
-			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-			barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-			barrier.Transition.pResource = frameBufferResources[backBufferIndex].get();
-			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
-			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-			barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-
-			commandManager.get_list()->ResourceBarrier(1, &barrier);
-		}
-		*/
 		pdx12::resource_barrior(commandManager.get_list(), frameBufferResources[backBufferIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 		{
@@ -131,19 +118,6 @@ int main()
 
 		commandManager.get_list()->DrawInstanced(3, 1, 0, 0);
 
-		/*
-		{
-			D3D12_RESOURCE_BARRIER barrier{};
-			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-			barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-			barrier.Transition.pResource = frameBufferResources[backBufferIndex].get();
-			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COMMON;
-			barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-
-			commandManager.get_list()->ResourceBarrier(1, &barrier);
-		}
-		*/
 		pdx12::resource_barrior(commandManager.get_list(), frameBufferResources[backBufferIndex], D3D12_RESOURCE_STATE_COMMON);
 
 		commandManager.get_list()->Close();
