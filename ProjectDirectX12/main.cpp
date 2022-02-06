@@ -8,6 +8,7 @@
 #include"shader.hpp"
 #include"resource.hpp"
 #include"pipeline_state.hpp"
+#include"OBJ-Loader/Source/OBJ_Loader.h"
 #include<iostream>
 
 #ifdef _DEBUG
@@ -56,28 +57,29 @@ int main()
 	auto vertexShader = pdx12::create_shader(L"ShaderFile/SimpleVertexShader.hlsl", "main", "vs_5_0");
 	auto pixelShader = pdx12::create_shader(L"ShaderFile/SimplePixelShader.hlsl", "main", "ps_5_0");
 
-	auto vertexBuffer = pdx12::create_commited_upload_buffer_resource(device.get(), sizeof(float) * 3 * 3);
+	objl::Loader Loader;
+
+	bool loadout = Loader.LoadFile("3DModel/bun_zipper.obj");
+	objl::Mesh mesh = Loader.LoadedMeshes[0];
+
+	auto vertexBuffer = pdx12::create_commited_upload_buffer_resource(device.get(), sizeof(float) * 3 * mesh.Vertices.size());
 	{
 		float* vertexBufferPtr = nullptr;
 		vertexBuffer.first->Map(0, nullptr, reinterpret_cast<void**>(&vertexBufferPtr));
 
-		//ŽOŠpŒ`
-		vertexBufferPtr[0] = -0.8f;
-		vertexBufferPtr[1] = -0.8f;
-		vertexBufferPtr[2] = 0.f;
-		vertexBufferPtr[3] = -0.8f;
-		vertexBufferPtr[4] = 0.8f;
-		vertexBufferPtr[5] = 0.f;
-		vertexBufferPtr[6] = 0.8f;
-		vertexBufferPtr[7] = -0.8f;
-		vertexBufferPtr[8] = 0.f;
+		for (std::size_t i = 0; i < mesh.Vertices.size(); i++)
+		{
+			vertexBufferPtr[i * 3] = mesh.Vertices[i].Position.X;
+			vertexBufferPtr[i * 3 + 1] = mesh.Vertices[i].Position.Y;
+			vertexBufferPtr[i * 3 + 2] = mesh.Vertices[i].Position.Z;
+		}
 
 		vertexBuffer.first->Unmap(0, nullptr);
 	}
 
 	D3D12_VERTEX_BUFFER_VIEW triangleVertexBufferView{};
 	triangleVertexBufferView.BufferLocation = vertexBuffer.first->GetGPUVirtualAddress();
-	triangleVertexBufferView.SizeInBytes = sizeof(float) * 3 * 3;
+	triangleVertexBufferView.SizeInBytes = sizeof(float) * 3 * mesh.Vertices.size();
 	triangleVertexBufferView.StrideInBytes = sizeof(float) * 3;
 
 
@@ -114,7 +116,7 @@ int main()
 
 		commandManager.get_list()->IASetVertexBuffers(0, 1, &triangleVertexBufferView);
 
-		commandManager.get_list()->DrawInstanced(3, 1, 0, 0);
+		commandManager.get_list()->DrawInstanced(mesh.Vertices.size(), 1, 0, 0);
 
 		pdx12::resource_barrior(commandManager.get_list(), frameBufferResources[backBufferIndex], D3D12_RESOURCE_STATE_COMMON);
 
