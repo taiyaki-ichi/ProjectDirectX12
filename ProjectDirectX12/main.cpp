@@ -75,6 +75,11 @@ int main()
 		vertexBuffer.first->Unmap(0, nullptr);
 	}
 
+	D3D12_VERTEX_BUFFER_VIEW triangleVertexBufferView{};
+	triangleVertexBufferView.BufferLocation = vertexBuffer.first->GetGPUVirtualAddress();
+	triangleVertexBufferView.SizeInBytes = sizeof(float) * 3 * 3;
+	triangleVertexBufferView.StrideInBytes = sizeof(float) * 3;
+
 
 	auto graphicsPipelineState = pdx12::create_graphics_pipeline(device.get(), rootSignature.get(),
 		{ { "POSITION",DXGI_FORMAT_R32G32B32_FLOAT } }, { FRAME_BUFFER_FORMAT }, { vertexShader.get(),pixelShader.get() }
@@ -107,14 +112,7 @@ int main()
 		commandManager.get_list()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		commandManager.get_list()->SetGraphicsRootSignature(rootSignature.get());
 
-		{
-			D3D12_VERTEX_BUFFER_VIEW vbv{};
-			vbv.BufferLocation = vertexBuffer.first->GetGPUVirtualAddress();
-			vbv.SizeInBytes = sizeof(float) * 3 * 3;
-			vbv.StrideInBytes = sizeof(float) * 3;
-
-			commandManager.get_list()->IASetVertexBuffers(0, 1, &vbv);
-		}
+		commandManager.get_list()->IASetVertexBuffers(0, 1, &triangleVertexBufferView);
 
 		commandManager.get_list()->DrawInstanced(3, 1, 0, 0);
 
