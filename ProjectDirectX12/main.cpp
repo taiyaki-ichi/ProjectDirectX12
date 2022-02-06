@@ -10,6 +10,7 @@
 #include"pipeline_state.hpp"
 #include"OBJ-Loader/Source/OBJ_Loader.h"
 #include<iostream>
+#include<DirectXMath.h>
 
 #ifdef _DEBUG
 #define _CRTDBG_MAP_ALLOC
@@ -22,6 +23,8 @@ int main()
 #ifdef _DEBUG
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
+
+	using namespace DirectX;
 
 	constexpr std::size_t WINDOW_WIDTH = 500;
 	constexpr std::size_t WINDOW_HEIGHT = 500;
@@ -52,8 +55,6 @@ int main()
 	for (std::size_t i = 0; i < FRAME_BUFFER_NUM; i++)
 		pdx12::create_texture2D_RTV(device.get(), descriptorHeapRTV.get_CPU_handle(i), frameBufferResources[i].first.get(), FRAME_BUFFER_FORMAT, 0, 0);
 
-	auto rootSignature = pdx12::create_root_signature(device.get(), {}, {});
-
 	auto vertexShader = pdx12::create_shader(L"ShaderFile/SimpleVertexShader.hlsl", "main", "vs_5_0");
 	auto pixelShader = pdx12::create_shader(L"ShaderFile/SimplePixelShader.hlsl", "main", "ps_5_0");
 
@@ -82,6 +83,17 @@ int main()
 	triangleVertexBufferView.SizeInBytes = sizeof(float) * 3 * mesh.Vertices.size();
 	triangleVertexBufferView.StrideInBytes = sizeof(float) * 3;
 
+	XMMATRIX worldMatrix = XMMatrixScaling(10, 10, 10);;
+
+	auto worldMatrixBufferResource = pdx12::create_commited_upload_buffer_resource(device.get(), pdx12::alignment<UINT64>(sizeof(worldMatrix), 256));
+	XMMATRIX* worldMatrixPtr = nullptr;
+	worldMatrixBufferResource.first->Map(0, nullptr, reinterpret_cast<void**>(&worldMatrixPtr));
+
+	pdx12::descriptor_heap worldDescriptorHeap{};
+	worldDescriptorHeap.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1);
+	pdx12::create_CBV(device.get(), worldDescriptorHeap.get_CPU_handle(0), worldMatrixBufferResource.first.get(), pdx12::alignment<UINT64>(sizeof(worldMatrix), 256));
+
+	auto rootSignature = pdx12::create_root_signature(device.get(), { {D3D12_DESCRIPTOR_RANGE_TYPE_CBV} }, {});
 
 	auto graphicsPipelineState = pdx12::create_graphics_pipeline(device.get(), rootSignature.get(),
 		{ { "POSITION",DXGI_FORMAT_R32G32B32_FLOAT } }, { FRAME_BUFFER_FORMAT }, { vertexShader.get(),pixelShader.get() }
@@ -93,6 +105,9 @@ int main()
 	
 	while (pdx12::update_window())
 	{
+		worldMatrix *= XMMatrixRotationY(0.01f);
+		*worldMatrixPtr = worldMatrix;
+
 		auto backBufferIndex = swapChain->GetCurrentBackBufferIndex();
 
 		commandManager.reset_list(0);
@@ -110,9 +125,14 @@ int main()
 		auto backBufferCPUHandle = descriptorHeapRTV.get_CPU_handle(backBufferIndex);
 		commandManager.get_list()->OMSetRenderTargets(1, &backBufferCPUHandle, 0, nullptr);
 
+		commandManager.get_list()->SetGraphicsRootSignature(rootSignature.get());
+		{
+			auto ptr = worldDescriptorHeap.get();
+			commandManager.get_list()->SetDescriptorHeaps(1, &ptr);
+		}
+		commandManager.get_list()->SetGraphicsRootDescriptorTable(0, worldDescriptorHeap.get_GPU_handle(0));
 		commandManager.get_list()->SetPipelineState(graphicsPipelineState.get());
 		commandManager.get_list()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		commandManager.get_list()->SetGraphicsRootSignature(rootSignature.get());
 
 		commandManager.get_list()->IASetVertexBuffers(0, 1, &triangleVertexBufferView);
 

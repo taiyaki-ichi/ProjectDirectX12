@@ -60,4 +60,9 @@ namespace pdx12
 		dstLocation.SubresourceIndex = 0;
 	}
 
+	template<typename T>
+	inline constexpr T alignment(T size, T alignment) {
+		return size + alignment - size % alignment;
+	}
+
 }
