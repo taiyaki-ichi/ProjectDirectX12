@@ -1,4 +1,11 @@
-float4 main( float4 pos : POSITION ) : SV_POSITION
+#include"SimpleHeader.hlsli"
+
+VSOutput main(float4 pos : POSITION, float4 normal : NORMAL) 
 {
-	return pos;
+	VSOutput output;
+	output.pos = mul(mul(proj, view), mul(world, pos));
+	normal.w = 0.f;
+	output.normal = mul(world, normal);
+	output.ray = normalize(mul(world, pos) - eye);
+	return output;
 }

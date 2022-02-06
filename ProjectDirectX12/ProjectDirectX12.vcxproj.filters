@@ -20,4 +20,7 @@
     <FxCompile Include="ShaderFile\SimpleVertexShader.hlsl" />
     <FxCompile Include="ShaderFile\SimplePixelShader.hlsl" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="ShaderFile\SimpleHeader.hlsli" />
+  </ItemGroup>
 </Project>
