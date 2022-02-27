@@ -23,9 +23,14 @@ namespace pdx12
 		float mip_LOD_bias = 0;
 	};
 
+	struct descriptor_range_type
+	{
+		D3D12_DESCRIPTOR_RANGE_TYPE descriptorRangeType;
+		UINT num = 1;
+	};
 	
-	inline release_unique_ptr<ID3D12RootSignature> create_root_signature(ID3D12Device* device, 
-		std::vector<std::vector<D3D12_DESCRIPTOR_RANGE_TYPE>> const& descriptorRangeTypes, const std::vector<static_sampler>& staticSamplers)
+	inline release_unique_ptr<ID3D12RootSignature> create_root_signature(ID3D12Device* device,
+		std::vector<std::vector<descriptor_range_type>> const& descriptorRangeTypes, const std::vector<static_sampler>& staticSamplers)
 	{
 		std::vector<std::vector<D3D12_DESCRIPTOR_RANGE>> descriptorRanges{};
 
@@ -41,13 +46,13 @@ namespace pdx12
 
 				for (auto& t : rangeTypes) {
 					D3D12_DESCRIPTOR_RANGE descriptorRange{};
-					descriptorRange.NumDescriptors = 1;
-					descriptorRange.RangeType = static_cast<D3D12_DESCRIPTOR_RANGE_TYPE>(t);
-					descriptorRange.BaseShaderRegister = registerNums[static_cast<D3D12_DESCRIPTOR_RANGE_TYPE>(t)];
+					descriptorRange.NumDescriptors = t.num;
+					descriptorRange.RangeType = static_cast<D3D12_DESCRIPTOR_RANGE_TYPE>(t.descriptorRangeType);
+					descriptorRange.BaseShaderRegister = registerNums[static_cast<D3D12_DESCRIPTOR_RANGE_TYPE>(t.descriptorRangeType)];
 					descriptorRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
 					ranges.push_back(std::move(descriptorRange));
-					registerNums[static_cast<D3D12_DESCRIPTOR_RANGE_TYPE>(t)]++;
+					registerNums[static_cast<D3D12_DESCRIPTOR_RANGE_TYPE>(t.descriptorRangeType)] += t.num;
 				}
 
 				descriptorRanges.push_back(std::move(ranges));

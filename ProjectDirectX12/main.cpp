@@ -110,7 +110,7 @@ int main()
 	triangleVertexBufferView.SizeInBytes = sizeof(float) * 6 * mesh.Vertices.size();
 	triangleVertexBufferView.StrideInBytes = sizeof(float) * 6;
 
-	auto rootSignature = pdx12::create_root_signature(device.get(), { {D3D12_DESCRIPTOR_RANGE_TYPE_CBV,D3D12_DESCRIPTOR_RANGE_TYPE_CBV} }, {});
+	auto rootSignature = pdx12::create_root_signature(device.get(), { {{D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{D3D12_DESCRIPTOR_RANGE_TYPE_CBV}} }, {});
 
 	auto graphicsPipelineState = pdx12::create_graphics_pipeline(device.get(), rootSignature.get(),
 		{ { "POSITION",DXGI_FORMAT_R32G32B32_FLOAT },{ "NORMAL",DXGI_FORMAT_R32G32B32_FLOAT } }, { FRAME_BUFFER_FORMAT }, { vertexShader.get(),pixelShader.get() }
