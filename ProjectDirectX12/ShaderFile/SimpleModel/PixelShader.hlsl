@@ -1,4 +1,4 @@
-#include"SimpleHeader.hlsli"
+#include"Header.hlsli"
 
 PSOutput main(VSOutput input)
 {

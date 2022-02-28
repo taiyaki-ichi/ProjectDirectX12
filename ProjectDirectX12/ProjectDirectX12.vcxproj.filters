@@ -17,13 +17,13 @@
     <ClInclude Include="pipeline_state.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="ShaderFile\SimpleVertexShader.hlsl" />
-    <FxCompile Include="ShaderFile\SimplePixelShader.hlsl" />
+    <FxCompile Include="ShaderFile\SimpleModel\VertexShader.hlsl" />
+    <FxCompile Include="ShaderFile\SimpleModel\PixelShader.hlsl" />
     <FxCompile Include="ShaderFile\DeferredRendering\VertexShader.hlsl" />
     <FxCompile Include="ShaderFile\DeferredRendering\PixelShader.hlsl" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="ShaderFile\SimpleHeader.hlsli" />
+    <None Include="ShaderFile\SimpleModel\Header.hlsli" />
     <None Include="ShaderFile\DeferredRendering\Header.hlsli" />
   </ItemGroup>
 </Project>
