@@ -1,3 +1,4 @@
+
 cbuffer SceneData : register(b0)
 {
 	matrix view;
@@ -9,17 +10,13 @@ cbuffer SceneData : register(b0)
 };
 
 
-matrix world : register(b1);
+Texture2D<float4> mainColorTexture: register(t0);
+Texture2D<float4> shrinkHighLuminanceTexture[6]: register(t1);
+
+SamplerState smp: register(s0);
 
 struct VSOutput
 {
 	float4 pos : SV_POSITION;
-	float4 normal : NORMAL;
-};
-
-struct PSOutput
-{
-	float4 albedoColor : SV_TARGET0;
-	float4 normal : SV_TARGET1;
-	float4 worldPosition : SV_TARGET2;
+	float2 uv : TEXCOORD;
 };

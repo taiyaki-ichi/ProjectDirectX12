@@ -6,6 +6,7 @@ cbuffer SceneData : register(b0)
 	float4 lightColor;
 	float4 lightDir;
 	float3 eye;
+	float luminanceDegree;
 };
 
 Texture2D<float4> albedoColorTexture: register(t0);
@@ -18,4 +19,10 @@ struct VSOutput
 {
 	float4 pos : SV_POSITION;
 	float2 uv : TEXCOOD;
+};
+
+struct PSOutput
+{
+	float4 color : SV_TARGET0;
+	float4 highLuminance : SV_TARGET1;
 };
