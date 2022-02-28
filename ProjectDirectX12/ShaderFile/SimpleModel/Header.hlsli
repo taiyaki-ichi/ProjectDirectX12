@@ -2,8 +2,8 @@ cbuffer SceneData : register(b0)
 {
 	matrix view;
 	matrix proj;
-	float3 lightDir;
-	float hoge;
+	float4 lightColor;
+	float4 lightDir;
 	float3 eye;
 };
 
@@ -13,5 +13,11 @@ struct VSOutput
 {
 	float4 pos : SV_POSITION;
 	float4 normal : NORMAL;
-	float3 ray : RAY;
+};
+
+struct PSOutput
+{
+	float4 albedoColor : SV_TARGET0;
+	float4 normal : SV_TARGET1;
+	float4 worldPosition : SV_TARGET2;
 };
