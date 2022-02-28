@@ -72,7 +72,7 @@ int main()
 	constexpr DXGI_FORMAT SHRINKED_HIGH_LUMINANCE_FORMAT = HIGH_LUMINANCE_FORMAT;
 
 	//縮小された高輝度のリソースの数
-	constexpr std::size_t SHRINKED_HIGH_LUMINANCE_NUM = 6;
+	constexpr std::size_t SHRINKED_HIGH_LUMINANCE_NUM = 8;
 
 	//ポストエフェクトをかける前のリソースのフォーマット
 	//フレームバッファのフォーマットと同じで
