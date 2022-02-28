@@ -19,8 +19,11 @@
   <ItemGroup>
     <FxCompile Include="ShaderFile\SimpleVertexShader.hlsl" />
     <FxCompile Include="ShaderFile\SimplePixelShader.hlsl" />
+    <FxCompile Include="ShaderFile\DeferredRendering\VertexShader.hlsl" />
+    <FxCompile Include="ShaderFile\DeferredRendering\PixelShader.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ShaderFile\SimpleHeader.hlsli" />
+    <None Include="ShaderFile\DeferredRendering\Header.hlsli" />
   </ItemGroup>
 </Project>
