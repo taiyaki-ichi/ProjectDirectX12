@@ -29,6 +29,18 @@ struct SceneData
 	XMFLOAT3 lightDir;
 	float fuga;
 	XMFLOAT3 eye;
+};
+
+struct PostEffectData
+{
+	//被写界深度を計算する際の基準となるデプスのUV座標
+	XMFLOAT2 depthDiffCenter;
+	//デプスの差にかかる補正の定数
+	float depthDiffPower;
+	//デプスの差がdepthDiffLower以下の場合ぼかさない
+	float depthDiffLower;
+
+	//高輝度をメインの色に加算するまえにかける補正値
 	float luminanceDegree;
 };
 
@@ -269,6 +281,9 @@ int main()
 		}
 	}
 
+	//ポストエフェクトの情報の定数バッファ
+	auto postEffectDataResource = pdx12::create_commited_upload_buffer_resource(device.get(), pdx12::alignment<UINT64>(sizeof(PostEffectData), 256));
+
 	//
 	//デスクリプタヒープの作成
 	//
@@ -410,30 +425,34 @@ int main()
 	//ポストえっふぇくとにに利用するSRVなどを作成する用のデスクリプタヒープ
 	pdx12::descriptor_heap descriptorHeapPostEffectCBVSRVUAV{};
 	{
-		//1つ目はシーンデータ、2つ目は通常のカラー、3つ目から縮小された高輝度のリソース
-		//11つ目からは縮小されたメインカラーのリソース、19つ目はデプスバッファ
-		descriptorHeapPostEffectCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1 + 1 + SHRINKED_HIGH_LUMINANCE_NUM + SHRINKED_MAIN_COLOR_RESOURCE_NUM + 1);
+		//1つ目はシーンデータ、2つ目はポストエフェクトのデータ、3つ目は通常のカラー、4つ目から縮小された高輝度のリソース
+		//12つ目からは縮小されたメインカラーのリソース、20つ目はデプスバッファ
+		descriptorHeapPostEffectCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1 + 1 + 1 + SHRINKED_HIGH_LUMINANCE_NUM + SHRINKED_MAIN_COLOR_RESOURCE_NUM + 1);
 
 		//シーンデータ
 		pdx12::create_CBV(device.get(), descriptorHeapPostEffectCBVSRVUAV.get_CPU_handle(0),
 			sceneDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(SceneData), 256));
 
+		//ポストエフェクトのデータ
+		pdx12::create_CBV(device.get(), descriptorHeapPostEffectCBVSRVUAV.get_CPU_handle(1),
+			postEffectDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(PostEffectData), 256));
+
 		//メインの色
-		pdx12::create_texture2D_SRV(device.get(), descriptorHeapPostEffectCBVSRVUAV.get_CPU_handle(1),
+		pdx12::create_texture2D_SRV(device.get(), descriptorHeapPostEffectCBVSRVUAV.get_CPU_handle(1 + 1),
 			mainColorResource.first.get(), MAIN_COLOR_RESOURCE_FORMAT, 1, 0, 0, 0.f);
 
 		//縮小された高輝度
 		for (std::size_t i = 0; i < SHRINKED_HIGH_LUMINANCE_NUM; i++)
-			pdx12::create_texture2D_SRV(device.get(), descriptorHeapPostEffectCBVSRVUAV.get_CPU_handle(1 + 1 + i),
+			pdx12::create_texture2D_SRV(device.get(), descriptorHeapPostEffectCBVSRVUAV.get_CPU_handle(1 + 1 + 1 + i),
 				shrinkedHighLuminanceResource[i].first.get(), SHRINKED_HIGH_LUMINANCE_FORMAT, 1, 0, 0, 0.f);
 
 		//縮小されたメインカラー
 		for (std::size_t i = 0; i < SHRINKED_MAIN_COLOR_RESOURCE_NUM; i++)
-			pdx12::create_texture2D_SRV(device.get(), descriptorHeapPostEffectCBVSRVUAV.get_CPU_handle(1 + 1 + SHRINKED_HIGH_LUMINANCE_NUM + i),
+			pdx12::create_texture2D_SRV(device.get(), descriptorHeapPostEffectCBVSRVUAV.get_CPU_handle(1 + 1 + 1 + SHRINKED_HIGH_LUMINANCE_NUM + i),
 				shrinkedMainColorResource[i].first.get(), SHRINKED_MAIN_COLOR_RESOURCE_FORMAT, 1, 0, 0, 0.f);
 
 		//デプスバッファ
-		pdx12::create_texture2D_SRV(device.get(), descriptorHeapPostEffectCBVSRVUAV.get_CPU_handle(1 + 1 + SHRINKED_HIGH_LUMINANCE_NUM + SHRINKED_MAIN_COLOR_RESOURCE_NUM),
+		pdx12::create_texture2D_SRV(device.get(), descriptorHeapPostEffectCBVSRVUAV.get_CPU_handle(1 + 1 + 1 + SHRINKED_HIGH_LUMINANCE_NUM + SHRINKED_MAIN_COLOR_RESOURCE_NUM),
 			depthBuffer.first.get(), DEPTH_BUFFER_SRV_FORMAT, 1, 0, 0, 0.f);
 	}
 
@@ -506,7 +525,7 @@ int main()
 
 
 	auto postEffectRootSignature = pdx12::create_root_signature(device.get(),
-		{ {{/*シーンデータ*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV}, {/*メインのカラーのテクスチャ*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV},
+		{ {{/*シーンデータ*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*ポストエフェクトのデータ*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV}, {/*メインのカラーのテクスチャ*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV},
 		{/*縮小された高輝度のリソース*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,SHRINKED_HIGH_LUMINANCE_NUM},{/*縮小されたメインカラーののリソース*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,SHRINKED_MAIN_COLOR_RESOURCE_NUM},
 		{/*デプスバッファ*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV}}},
 		{ {D3D12_FILTER_MIN_MAG_MIP_LINEAR ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP,D3D12_COMPARISON_FUNC_NEVER} });
@@ -546,7 +565,13 @@ int main()
 		lightDir,
 		0.f,
 		eye,
-		1.f
+	};
+
+	PostEffectData posEffectData{
+		{0.5f,0.5f},
+		0.5f,
+		0.f,
+		1.f,
 	};
 
 	ModelData modelData{};
@@ -562,6 +587,10 @@ int main()
 	modelDataResource.first->Map(0, nullptr, reinterpret_cast<void**>(&mappedModelDataPtr));
 	*mappedModelDataPtr = modelData;
 	
+	PostEffectData* mappedPostEffectData = nullptr;
+	postEffectDataResource.first->Map(0, nullptr, reinterpret_cast<void**>(&mappedPostEffectData));
+	*mappedPostEffectData = posEffectData;
+
 	//
 	//メインループ
 	//

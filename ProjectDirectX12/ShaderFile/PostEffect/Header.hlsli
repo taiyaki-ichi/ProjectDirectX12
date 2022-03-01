@@ -6,9 +6,16 @@ cbuffer SceneData : register(b0)
 	float4 lightColor;
 	float4 lightDir;
 	float3 eye;
-	float luminanceDegree;
 };
 
+cbuffer PostEffectData
+{
+	float2 depthDiffCenter;
+	float depthDiffPower;
+	float depthDiffLower;
+
+	float luminanceDegree;
+};
 
 Texture2D<float4> mainColorTexture: register(t0);
 Texture2D<float4> shrinkedHighLuminanceTexture[8]: register(t1);
