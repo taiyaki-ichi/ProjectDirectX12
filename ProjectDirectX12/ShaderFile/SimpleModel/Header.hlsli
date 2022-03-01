@@ -8,8 +8,11 @@ cbuffer SceneData : register(b0)
 	float luminanceDegree;
 };
 
+cbuffer ModelData : register(b1)
+{
+	matrix world[8];
+};
 
-matrix world : register(b1);
 
 struct VSOutput
 {

@@ -11,7 +11,9 @@ cbuffer SceneData : register(b0)
 
 
 Texture2D<float4> mainColorTexture: register(t0);
-Texture2D<float4> shrinkHighLuminanceTexture[8]: register(t1);
+Texture2D<float4> shrinkedHighLuminanceTexture[8]: register(t1);
+Texture2D<float4> shrinkedMainColorTexture[8]: register(t9);
+Texture2D<float4> depthBuffer: register(t17);
 
 SamplerState smp: register(s0);
 

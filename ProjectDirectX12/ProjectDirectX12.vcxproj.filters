@@ -25,11 +25,14 @@
     <FxCompile Include="ShaderFile\PostEffect\PixelShader.hlsl" />
     <FxCompile Include="ShaderFile\HighLuminance\PixelShader.hlsl" />
     <FxCompile Include="ShaderFile\HighLuminance\VertexShader.hlsl" />
+    <FxCompile Include="ShaderFile\MainColorDownSampling\VertexShader.hlsl" />
+    <FxCompile Include="ShaderFile\MainColorDownSampling\PixelShader.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ShaderFile\SimpleModel\Header.hlsli" />
     <None Include="ShaderFile\DeferredRendering\Header.hlsli" />
     <None Include="ShaderFile\PostEffect\Header.hlsli" />
     <None Include="ShaderFile\HighLuminance\Header.hlsli" />
+    <None Include="ShaderFile\MainColorDownSampling\Header.hlsli" />
   </ItemGroup>
 </Project>
