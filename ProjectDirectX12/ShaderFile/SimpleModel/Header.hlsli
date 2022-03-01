@@ -5,9 +5,14 @@ cbuffer SceneData : register(b0)
 	float4 lightColor;
 	float4 lightDir;
 	float3 eye;
+	float luminanceDegree;
 };
 
-matrix world : register(b1);
+cbuffer ModelData : register(b1)
+{
+	matrix world[8];
+};
+
 
 struct VSOutput
 {
