@@ -20,6 +20,11 @@
 
 using namespace DirectX;
 
+
+//カスケードシャドウマップの数
+//TODO: 置く場所
+constexpr std::size_t SHADOW_MAP_NUM = 3;
+
 struct SceneData
 {
 	XMMATRIX view;
@@ -29,6 +34,10 @@ struct SceneData
 	XMFLOAT3 lightDir;
 	float fuga;
 	XMFLOAT3 eye;
+	float piyo;
+
+	//
+	XMMATRIX lightViewProj[SHADOW_MAP_NUM];
 };
 
 struct PostEffectData
@@ -50,6 +59,11 @@ struct ModelData
 	XMMATRIX world[MODEL_NUM];
 };
 
+struct GroundData
+{
+	XMMATRIX world;
+};
+
 int main()
 {
 #ifdef _DEBUG
@@ -58,6 +72,11 @@ int main()
 
 	constexpr std::size_t WINDOW_WIDTH = 500;
 	constexpr std::size_t WINDOW_HEIGHT = 500;
+
+	constexpr float CAMERA_NEAR_Z = 0.01f;
+	constexpr float CAMERA_FAR_Z = 100.f;
+
+	constexpr float VIEW_ANGLE = DirectX::XM_PIDIV2;
 
 	constexpr std::size_t FRAME_BUFFER_NUM = 2;
 	constexpr DXGI_FORMAT FRAME_BUFFER_FORMAT = DXGI_FORMAT_B8G8R8A8_UNORM;
@@ -98,6 +117,30 @@ int main()
 
 	//縮小されダウンサンプリングされたリソースのフォーマットの数
 	constexpr std::size_t SHRINKED_MAIN_COLOR_RESOURCE_NUM = 8;
+
+	//シャドウマップのフォーマット
+	constexpr DXGI_FORMAT SHADOW_MAP_FORMAT = DXGI_FORMAT_D32_FLOAT;
+	constexpr DXGI_FORMAT SHADOW_MAP_SRV_FORMAT = DXGI_FORMAT_R32_FLOAT;
+
+	//カスケードシャドウマップのサイズ
+	//近い順
+	constexpr std::array<std::size_t, SHADOW_MAP_NUM> SHADOW_MAP_SIZE = {
+		2048,
+		2048,
+		2048,
+	};
+
+	//シャドウマップの距離テーブル
+	constexpr std::array<std::size_t, SHADOW_MAP_NUM> SHADOW_MAP_AREA_TABLE = {
+		1,
+		5,
+		CAMERA_FAR_Z
+	};
+
+	//ライトのビュープロジェクション行列の数
+	//シャドウマップと同じ数
+	constexpr std::size_t LIGHT_VIEW_PROJ_MATRIX_NUM = SHADOW_MAP_NUM;
+
 
 	//
 	//基本的な部分の作成
@@ -241,6 +284,9 @@ int main()
 	//定数バッファのため256アライメントする必要がある
 	auto modelDataResource = pdx12::create_commited_upload_buffer_resource(device.get(), pdx12::alignment<UINT64>(sizeof(ModelData), 256));
 
+	//地面をGbufferに書き込む際のグランドのデータを扱うリソース
+	auto groundDataResource = pdx12::create_commited_upload_buffer_resource(device.get(), pdx12::alignment<UINT64>(sizeof(GroundData), 256));
+
 	//高輝度のリソース
 	auto highLuminanceClearValue = getZeroFloat4CearValue(HIGH_LUMINANCE_FORMAT);
 	auto highLuminanceResource = pdx12::create_commited_texture_resource(device.get(), HIGH_LUMINANCE_FORMAT, WINDOW_WIDTH, WINDOW_HEIGHT, 2,
@@ -284,6 +330,21 @@ int main()
 	//ポストエフェクトの情報の定数バッファ
 	auto postEffectDataResource = pdx12::create_commited_upload_buffer_resource(device.get(), pdx12::alignment<UINT64>(sizeof(PostEffectData), 256));
 
+	//シャドウマップのリソース
+	std::array<pdx12::resource_and_state, SHADOW_MAP_NUM> shadowMapResource{};
+	{
+		for (std::size_t i = 0; i < SHADOW_MAP_NUM; i++)
+			shadowMapResource[i] = pdx12::create_commited_texture_resource(device.get(), SHADOW_MAP_FORMAT, SHADOW_MAP_SIZE[i], SHADOW_MAP_SIZE[i], 2,
+				1, 1, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, &depthBufferClearValue);
+	}
+
+	//ライトのビュープロジェクション行列のリソース
+	std::array<pdx12::resource_and_state, LIGHT_VIEW_PROJ_MATRIX_NUM> lightViewProjMatrixResource{};
+	{
+		for (std::size_t i = 0; i < LIGHT_VIEW_PROJ_MATRIX_NUM; i++)
+			lightViewProjMatrixResource[i] = pdx12::create_commited_upload_buffer_resource(device.get(), pdx12::alignment<UINT64>(sizeof(XMMATRIX), 256));
+	}
+
 	//
 	//デスクリプタヒープの作成
 	//
@@ -305,15 +366,36 @@ int main()
 		pdx12::create_texture2D_RTV(device.get(), descriptorHeapGBufferRTV.get_CPU_handle(2), gBufferWorldPositionResource.first.get(), G_BUFFER_WORLD_POSITION_FORMAT, 0, 0);
 	}
 
-	//モデルをGbufferに書き込む時用のデスクリプタヒープ
-	pdx12::descriptor_heap descriptorHeapGBufferCBVSRVUAV{};
+	//モデルを書き込む時用のデスクリプタヒープ
+	//Gbufferに書き込む時とカメラからのデプスを取得する時に使用
+	pdx12::descriptor_heap descriptorHeapModelCBVSRVUAV{};
 	{
-		descriptorHeapGBufferCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 2);
+		descriptorHeapModelCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 2 + LIGHT_VIEW_PROJ_MATRIX_NUM);
 
 		//一つ目はSceneData
-		pdx12::create_CBV(device.get(), descriptorHeapGBufferCBVSRVUAV.get_CPU_handle(0), sceneDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(SceneData), 256));
+		pdx12::create_CBV(device.get(), descriptorHeapModelCBVSRVUAV.get_CPU_handle(0), sceneDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(SceneData), 256));
 		//二つ目はModelData
-		pdx12::create_CBV(device.get(), descriptorHeapGBufferCBVSRVUAV.get_CPU_handle(1), modelDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(ModelData), 256));
+		pdx12::create_CBV(device.get(), descriptorHeapModelCBVSRVUAV.get_CPU_handle(1), modelDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(ModelData), 256));
+
+		//3つ目以降はライトプロジェクション行列
+		for (std::size_t i = 0; i < LIGHT_VIEW_PROJ_MATRIX_NUM; i++)
+			pdx12::create_CBV(device.get(), descriptorHeapModelCBVSRVUAV.get_CPU_handle(2 + i), lightViewProjMatrixResource[i].first.get(), pdx12::alignment<UINT64>(sizeof(XMMATRIX), 256));
+	}
+
+	//地面のモデルを書き込む用のデスクリプタヒープ
+	//Gbufferに書き込む時とカメラからのデプスっを取得する時に使用
+	pdx12::descriptor_heap descriptorHeapGroundCBVSRVUAV{};
+	{
+		descriptorHeapGroundCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 2 + LIGHT_VIEW_PROJ_MATRIX_NUM);
+
+		//一つ目はSceneData
+		pdx12::create_CBV(device.get(), descriptorHeapGroundCBVSRVUAV.get_CPU_handle(0), sceneDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(SceneData), 256));
+		//二つ目はGroundData
+		pdx12::create_CBV(device.get(), descriptorHeapGroundCBVSRVUAV.get_CPU_handle(1), groundDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(GroundData), 256));
+
+		//3つ目以降はライトプロジェクション行列
+		for (std::size_t i = 0; i < LIGHT_VIEW_PROJ_MATRIX_NUM; i++)
+			pdx12::create_CBV(device.get(), descriptorHeapGroundCBVSRVUAV.get_CPU_handle(2 + i), lightViewProjMatrixResource[i].first.get(), pdx12::alignment<UINT64>(sizeof(XMMATRIX), 256));
 	}
 
 	//GBufferに書き込む際に使用するデプスバッファのビューを作る
@@ -324,12 +406,22 @@ int main()
 		pdx12::create_texture2D_DSV(device.get(), descriptorHeapGBufferDSV.get_CPU_handle(), depthBuffer.first.get(), DEPTH_BUFFER_FORMAT, 0);
 	}
 
+	//シャドウマップを作成する際に使用するデプスバッファのビューを作るよう
+	pdx12::descriptor_heap descriptorHeapShadowDSV{};
+	{
+		descriptorHeapShadowDSV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_DSV, SHADOW_MAP_NUM);
+
+		for (std::size_t i = 0; i < SHADOW_MAP_NUM; i++)
+			pdx12::create_texture2D_DSV(device.get(), descriptorHeapShadowDSV.get_CPU_handle(i), shadowMapResource[i].first.get(), SHADOW_MAP_FORMAT, 0);
+	}
+
+
 	//ディファードレンダリングを行う際に利用するSRVなどを作成する用のデスクリプタヒープ
 	pdx12::descriptor_heap descriptorHeapDefferredRenderingCBVSRVUAV{};
 	{
 		//とりあえず4つ
 		//シーンデータ、アルベドカラー、法線、ワールド座標
-		descriptorHeapDefferredRenderingCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 4);
+		descriptorHeapDefferredRenderingCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 4 + SHADOW_MAP_NUM);
 
 		//シーンデータ
 		pdx12::create_CBV(device.get(), descriptorHeapDefferredRenderingCBVSRVUAV.get_CPU_handle(0), 
@@ -346,6 +438,12 @@ int main()
 		//ワールド座標
 		pdx12::create_texture2D_SRV(device.get(), descriptorHeapDefferredRenderingCBVSRVUAV.get_CPU_handle(3), 
 			gBufferWorldPositionResource.first.get(),G_BUFFER_WORLD_POSITION_FORMAT, 1, 0, 0, 0.f);
+
+		//シャドウマップ
+		for (std::size_t i = 0; i < SHADOW_MAP_NUM; i++)
+			pdx12::create_texture2D_SRV(device.get(), descriptorHeapDefferredRenderingCBVSRVUAV.get_CPU_handle(4 + i),
+				shadowMapResource[i].first.get(), SHADOW_MAP_SRV_FORMAT, 1, 0, 0, 0.f);
+
 	}
 
 	//ディファードレンダリングでのライティングのレンダーターゲットのビューのデスクリプタヒープ
@@ -462,8 +560,14 @@ int main()
 	//
 
 	//モデルをGBufferに書き込むシェーダ
-	auto gBufferVertexShader = pdx12::create_shader(L"ShaderFile/SimpleModel/VertexShader.hlsl", "main", "vs_5_0");
-	auto gBufferPixelShader = pdx12::create_shader(L"ShaderFile/SimpleModel/PixelShader.hlsl", "main", "ps_5_0");
+	auto modelGBufferVertexShader = pdx12::create_shader(L"ShaderFile/SimpleModel/VertexShader.hlsl", "main", "vs_5_0");
+	auto modelGBufferPixelShader = pdx12::create_shader(L"ShaderFile/SimpleModel/PixelShader.hlsl", "main", "ps_5_0");
+	auto modelShadowVertexShader = pdx12::create_shader(L"ShaderFile/SimpleModel/ShadowVertexShader.hlsl", "main", "vs_5_0");
+
+	//地面のモデルをGbufferに書き込むシェーダ
+	auto groundGBufferVertexShader = pdx12::create_shader(L"ShaderFile/SimpleGround/VertexShader.hlsl", "main", "vs_5_0");
+	auto groundGBufferPixelShader = pdx12::create_shader(L"ShaderFile/SimpleGround/PixelShader.hlsl", "main", "ps_5_0");
+	auto groudnShadowVertexShader = pdx12::create_shader(L"ShaderFile/SimpleGround/ShadowVertexShader.hlsl", "main", "vs_5_0");
 
 	//GBUufferを利用したディファードレンダリングでのライティング用のシェーダ
 	auto deferredRenderingVertexShader = pdx12::create_shader(L"ShaderFile/DeferredRendering/VertexShader.hlsl", "main", "vs_5_0");
@@ -485,17 +589,40 @@ int main()
 	//ルートシグネチャとパイプラインの作成
 	//
 
-	auto gBufferRootSignature = pdx12::create_root_signature(device.get(),
-		{ {{/*シーンデータ*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*モデルデータ*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV}} }, {});
+	//モデルを描写する用のルートシグネチャ
+	auto modelRootSignature = pdx12::create_root_signature(device.get(),
+		{ {{/*シーンデータ*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*モデルデータ*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV}} ,{{/*ライトのビュープロジェクション行列*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV}} }, {});
 
-	auto gBufferGraphicsPipelineState = pdx12::create_graphics_pipeline(device.get(), gBufferRootSignature.get(),
+	//モデルを描写する用のグラフィックパイプライン
+	auto modelGBufferGraphicsPipelineState = pdx12::create_graphics_pipeline(device.get(), modelRootSignature.get(),
 		{ { "POSITION",DXGI_FORMAT_R32G32B32_FLOAT },{ "NORMAL",DXGI_FORMAT_R32G32B32_FLOAT } },
-		{ G_BUFFER_ALBEDO_COLOR_FORMAT,G_BUFFER_NORMAL_FORMAT,G_BUFFER_WORLD_POSITION_FORMAT }, { gBufferVertexShader.get(),gBufferPixelShader.get() }
+		{ G_BUFFER_ALBEDO_COLOR_FORMAT,G_BUFFER_NORMAL_FORMAT,G_BUFFER_WORLD_POSITION_FORMAT }, { modelGBufferVertexShader.get(),modelGBufferPixelShader.get() }
+	, true, false, D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+
+	//モデルの影を描写するグラフィックスパイプライン
+	auto modelShdowGraphicsPipelineState = pdx12::create_graphics_pipeline(device.get(), modelRootSignature.get(),
+		{ { "POSITION",DXGI_FORMAT_R32G32B32_FLOAT },{ "NORMAL",DXGI_FORMAT_R32G32B32_FLOAT } }, {}, { modelShadowVertexShader.get() }
+	, true, false, D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+
+
+	//地面を描写する用のルートシグネチャ
+	auto groundRootSignature = pdx12::create_root_signature(device.get(),
+		{ {{/*シーンデータ*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*グランドのデータ*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV}},{{/*ライトのビュープロジェクション行列*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV}} }, {});
+
+	//地面を描写する用のグラフィックパイプライン
+	auto groundGBufferGraphicsPipelineState = pdx12::create_graphics_pipeline(device.get(), groundRootSignature.get(),
+		{ { "POSITION",DXGI_FORMAT_R32G32B32_FLOAT },{ "TEXCOOD",DXGI_FORMAT_R32G32_FLOAT } },
+		{ G_BUFFER_ALBEDO_COLOR_FORMAT,G_BUFFER_NORMAL_FORMAT,G_BUFFER_WORLD_POSITION_FORMAT }, { groundGBufferVertexShader.get(),groundGBufferPixelShader.get() }
+	, true, false, D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+
+	//地面の影を描画する用のグラフィクスパイプライン
+	auto groundShadowGraphicsPipelineState = pdx12::create_graphics_pipeline(device.get(), groundRootSignature.get(),
+		{ { "POSITION",DXGI_FORMAT_R32G32B32_FLOAT },{ "TEXCOOD",DXGI_FORMAT_R32G32_FLOAT } }, {}, { groudnShadowVertexShader.get() }
 	, true, false, D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 
 
 	auto deferredRenderingRootSignature = pdx12::create_root_signature(device.get(),
-		{ {{/*シーンデータ*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*GBuffer アルベドカラー、法線、ワールド座標の順*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,3}} },
+		{ {{/*シーンデータ*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*GBuffer アルベドカラー、法線、ワールド座標の順*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,3},{/*シャドウマップ*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,SHADOW_MAP_NUM}} },
 		{ { D3D12_FILTER_MIN_MAG_MIP_LINEAR ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP,D3D12_COMPARISON_FUNC_NEVER} });
 
 	auto deferredRenderringGraphicsPipelineState = pdx12::create_graphics_pipeline(device.get(), deferredRenderingRootSignature.get(),
@@ -544,18 +671,32 @@ int main()
 	D3D12_VIEWPORT viewport{ 0,0, static_cast<float>(WINDOW_WIDTH),static_cast<float>(WINDOW_HEIGHT),0.f,1.f };
 	D3D12_RECT scissorRect{ 0,0,static_cast<LONG>(WINDOW_WIDTH),static_cast<LONG>(WINDOW_HEIGHT) };
 
-	XMFLOAT3 eye{ 3.f,3.f,3.f };
-	XMFLOAT3 target{ 0,0.1,0 };
+	XMFLOAT3 eye{ 0.f,5.f,5.f };
+	XMFLOAT3 target{ -10,0,0 };
 	XMFLOAT3 up{ 0,1,0 };
+	float asspect = static_cast<float>(WINDOW_WIDTH) / static_cast<float>(WINDOW_HEIGHT);
 	auto view = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
 	auto proj = DirectX::XMMatrixPerspectiveFovLH(
-		DirectX::XM_PIDIV2,
-		static_cast<float>(WINDOW_WIDTH) / static_cast<float>(WINDOW_HEIGHT),
-		0.01f,
-		100.f
+		VIEW_ANGLE,
+		asspect,
+		CAMERA_NEAR_Z,
+		CAMERA_FAR_Z
 	);
 	XMFLOAT3 lightColor{ 1.f,1.f,1.f };
-	XMFLOAT3 lightDir{ 1.f,1.f,1.f };
+	XMFLOAT3 lightDir{ -1.f,3.f,-1.f };
+
+	auto inv = XMMatrixInverse(nullptr, view * proj);
+	XMFLOAT3 right{ inv.r[0].m128_f32[0],inv.r[0].m128_f32[1] ,inv.r[0].m128_f32[2] };
+
+	XMFLOAT3 cameraForward = { target.x - eye.x,target.y - eye.y, target.z - eye.z };
+
+	//posは原点でいいっぽい
+	auto lightPosVector = XMLoadFloat3(&target) + XMVector3Normalize(XMLoadFloat3(&lightDir))
+		* XMVector3Length(XMVectorSubtract(XMLoadFloat3(&target), XMLoadFloat3(&eye))).m128_f32[0];
+	XMFLOAT3 lightPos{ 0,0,0 };
+	XMStoreFloat3(&lightPos, lightPosVector);
+
+	XMMATRIX lightViewProj = XMMatrixLookAtLH(lightPosVector, XMLoadFloat3(&target), XMLoadFloat3(&up)) * XMMatrixOrthographicLH(1024, 1024, -100.f, 200.f);
 
 	SceneData sceneData{
 		view,
@@ -579,23 +720,52 @@ int main()
 	for (std::size_t i = 0; i < MODEL_NUM; i++)
 		modelData.world[i] *= XMMatrixTranslation(0.f, 0.f, -4.f * i + 2.f);
 
+	GroundData groundData{};
+	groundData.world = XMMatrixScaling(500.f, 500.f, 500.f) * XMMatrixRotationX(XM_PIDIV2) * XMMatrixTranslation(0.f, 50.f, 0.f);
+
 	SceneData* mappedSceneDataPtr = nullptr;
 	sceneDataResource.first->Map(0, nullptr, reinterpret_cast<void**>(&mappedSceneDataPtr));
-	*mappedSceneDataPtr = sceneData;
 
 	ModelData* mappedModelDataPtr = nullptr;
 	modelDataResource.first->Map(0, nullptr, reinterpret_cast<void**>(&mappedModelDataPtr));
 	*mappedModelDataPtr = modelData;
-	
+
+	GroundData* mappedGroundDataPtr = nullptr;
+	groundDataResource.first->Map(0, nullptr, reinterpret_cast<void**>(&mappedGroundDataPtr));
+	*mappedGroundDataPtr = groundData;
+
 	PostEffectData* mappedPostEffectData = nullptr;
 	postEffectDataResource.first->Map(0, nullptr, reinterpret_cast<void**>(&mappedPostEffectData));
 	*mappedPostEffectData = posEffectData;
+
+
+	for (std::size_t i = 0; i < LIGHT_VIEW_PROJ_MATRIX_NUM; i++)
+	{
+		XMMATRIX* mappedLightViewProj = nullptr;
+		lightViewProjMatrixResource[i].first->Map(0, nullptr, reinterpret_cast<void**>(&mappedLightViewProj));
+
+		std::array<XMFLOAT3, 8> vertex{};
+		pdx12::get_frustum_vertex(eye, asspect, CAMERA_NEAR_Z, SHADOW_MAP_AREA_TABLE[i], VIEW_ANGLE, cameraForward, right, vertex);
+
+		for (std::size_t j = 0; j < vertex.size(); j++)
+			pdx12::apply(vertex[j], lightViewProj);
+
+		XMMATRIX clop{};
+		pdx12::get_clop_matrix(vertex, clop);
+		*mappedLightViewProj = lightViewProj * clop;
+
+		sceneData.lightViewProj[i] = lightViewProj * clop;
+
+		for (std::size_t j = 0; j < vertex.size(); j++)
+			pdx12::apply(vertex[j], clop);
+	}
+
 
 	//
 	//メインループ
 	//
 
-
+	std::size_t cnt = 0;
 	while (pdx12::update_window())
 	{
 		//
@@ -605,6 +775,53 @@ int main()
 		for (std::size_t i = 0; i < MODEL_NUM; i++)
 			modelData.world[i] *= XMMatrixTranslation(0.f, 0.f, 4.f * i - 2.f) * XMMatrixRotationY(0.01f) * XMMatrixTranslation(0.f, 0.f, -4.f * i + 2.f);
 		*mappedModelDataPtr = modelData;
+
+		
+		cnt++;
+		eye = { 5.f * std::sin(cnt * 0.01f),5.f,5.f * std::cos(cnt * 0.01f) };
+		view = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
+		proj = DirectX::XMMatrixPerspectiveFovLH(
+			VIEW_ANGLE,
+			asspect,
+			CAMERA_NEAR_Z,
+			CAMERA_FAR_Z
+		);
+		cameraForward = { target.x - eye.x,target.y - eye.y, target.z - eye.z };
+		lightPosVector = XMLoadFloat3(&target) + XMVector3Normalize(XMLoadFloat3(&lightDir))
+			* XMVector3Length(XMVectorSubtract(XMLoadFloat3(&target), XMLoadFloat3(&eye))).m128_f32[0];
+		XMFLOAT3 lightPos{};
+		XMStoreFloat3(&lightPos, lightPosVector);
+		lightViewProj = XMMatrixLookAtLH(lightPosVector, XMLoadFloat3(&target), XMLoadFloat3(&up)) * XMMatrixOrthographicLH(100, 100, -100.f, 200.f);
+		sceneData = {
+		view,
+		proj,
+		lightColor,
+		0.f,
+		lightDir,
+		0.f,
+		eye,
+		};
+		auto inv = XMMatrixInverse(nullptr, view * proj);
+		XMFLOAT3 right{ inv.r[0].m128_f32[0],inv.r[0].m128_f32[1] ,inv.r[0].m128_f32[2] };
+
+		for (std::size_t i = 0; i < LIGHT_VIEW_PROJ_MATRIX_NUM; i++)
+		{
+			XMMATRIX* mappedLightViewProj = nullptr;
+			lightViewProjMatrixResource[i].first->Map(0, nullptr, reinterpret_cast<void**>(&mappedLightViewProj));
+
+			std::array<XMFLOAT3, 8> vertex{};
+			pdx12::get_frustum_vertex(eye, asspect, CAMERA_NEAR_Z, SHADOW_MAP_AREA_TABLE[i], VIEW_ANGLE, cameraForward, right, vertex);
+			for (std::size_t j = 0; j < vertex.size(); j++)
+				pdx12::apply(vertex[j], lightViewProj);
+			XMMATRIX clop{};
+			pdx12::get_clop_matrix(vertex, clop);
+			*mappedLightViewProj = lightViewProj * clop;
+
+			sceneData.lightViewProj[i] = lightViewProj * clop;
+		}
+		
+		
+		*mappedSceneDataPtr = sceneData;
 
 		//
 		//コマンドリストの初期化など
@@ -647,24 +864,107 @@ int main()
 		auto depthBufferCPUHandle = descriptorHeapGBufferDSV.get_CPU_handle(0);
 		commandManager.get_list()->OMSetRenderTargets(std::size(gBufferRenderTargetCPUHandle), gBufferRenderTargetCPUHandle, false, &depthBufferCPUHandle);
 
+		//
+		//モデルの描画
+		//
 
-		commandManager.get_list()->SetGraphicsRootSignature(gBufferRootSignature.get());
+		commandManager.get_list()->SetGraphicsRootSignature(modelRootSignature.get());
 		{
-			auto ptr = descriptorHeapGBufferCBVSRVUAV.get();
+			auto ptr = descriptorHeapModelCBVSRVUAV.get();
 			commandManager.get_list()->SetDescriptorHeaps(1, &ptr);
 		}
-		commandManager.get_list()->SetGraphicsRootDescriptorTable(0, descriptorHeapGBufferCBVSRVUAV.get_GPU_handle(0));
-		commandManager.get_list()->SetPipelineState(gBufferGraphicsPipelineState.get());
+		commandManager.get_list()->SetGraphicsRootDescriptorTable(0, descriptorHeapModelCBVSRVUAV.get_GPU_handle(0));
+		commandManager.get_list()->SetPipelineState(modelGBufferGraphicsPipelineState.get());
 		commandManager.get_list()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 		commandManager.get_list()->IASetVertexBuffers(0, 1, &modelVertexBufferView);
 
 		commandManager.get_list()->DrawInstanced(modelVertexNum, MODEL_NUM, 0, 0);
 
+		//
+		//地面の描写
+		//
+
+		commandManager.get_list()->SetGraphicsRootSignature(groundRootSignature.get());
+		{
+			auto ptr = descriptorHeapGroundCBVSRVUAV.get();
+			commandManager.get_list()->SetDescriptorHeaps(1, &ptr);
+		}
+		commandManager.get_list()->SetGraphicsRootDescriptorTable(0, descriptorHeapGroundCBVSRVUAV.get_GPU_handle(0));
+		commandManager.get_list()->SetPipelineState(groundGBufferGraphicsPipelineState.get());
+		commandManager.get_list()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+
+		commandManager.get_list()->IASetVertexBuffers(0, 1, &peraPolygonVertexBufferView);
+
+		commandManager.get_list()->DrawInstanced(peraPolygonVertexNum, 1, 0, 0);
+
+		//
+		//
+		//
+
 		pdx12::resource_barrior(commandManager.get_list(), gBufferAlbedoColorResource, D3D12_RESOURCE_STATE_COMMON);
 		pdx12::resource_barrior(commandManager.get_list(), gBufferNormalResource, D3D12_RESOURCE_STATE_COMMON);
 		pdx12::resource_barrior(commandManager.get_list(), gBufferWorldPositionResource, D3D12_RESOURCE_STATE_COMMON);
 		pdx12::resource_barrior(commandManager.get_list(), depthBuffer, D3D12_RESOURCE_STATE_COMMON);
+
+
+
+		//
+		//シャドウマップの描写
+		//
+
+		for (std::size_t i = 0; i < SHADOW_MAP_NUM; i++)
+		{
+			D3D12_VIEWPORT viewport{ 0,0, static_cast<float>(SHADOW_MAP_SIZE[i]),static_cast<float>(SHADOW_MAP_SIZE[i]),0.f,1.f };
+			D3D12_RECT scissorRect{ 0,0,static_cast<LONG>(SHADOW_MAP_SIZE[i]),static_cast<LONG>(SHADOW_MAP_SIZE[i]) };
+
+			commandManager.get_list()->RSSetViewports(1, &viewport);
+			commandManager.get_list()->RSSetScissorRects(1, &scissorRect);
+
+			pdx12::resource_barrior(commandManager.get_list(), shadowMapResource[i], D3D12_RESOURCE_STATE_DEPTH_WRITE);
+			commandManager.get_list()->ClearDepthStencilView(descriptorHeapShadowDSV.get_CPU_handle(i), D3D12_CLEAR_FLAG_DEPTH, 1.f, 0.f, 0, nullptr);
+
+			auto depthBufferCPUHandle = descriptorHeapShadowDSV.get_CPU_handle(i);
+
+			commandManager.get_list()->OMSetRenderTargets(0, nullptr, false, &depthBufferCPUHandle);
+
+			//モデルの影
+			commandManager.get_list()->SetGraphicsRootSignature(modelRootSignature.get());
+			{
+				auto ptr = descriptorHeapModelCBVSRVUAV.get();
+				commandManager.get_list()->SetDescriptorHeaps(1, &ptr);
+			}
+			commandManager.get_list()->SetGraphicsRootDescriptorTable(0, descriptorHeapModelCBVSRVUAV.get_GPU_handle(0));
+			commandManager.get_list()->SetGraphicsRootDescriptorTable(1, descriptorHeapModelCBVSRVUAV.get_GPU_handle(2 + i));
+
+			commandManager.get_list()->SetPipelineState(modelShdowGraphicsPipelineState.get());
+			commandManager.get_list()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+			commandManager.get_list()->IASetVertexBuffers(0, 1, &modelVertexBufferView);
+
+			commandManager.get_list()->DrawInstanced(modelVertexNum, MODEL_NUM, 0, 0);
+
+			
+			//地面の影
+			commandManager.get_list()->SetGraphicsRootSignature(groundRootSignature.get());
+			{
+				auto ptr = descriptorHeapGroundCBVSRVUAV.get();
+				commandManager.get_list()->SetDescriptorHeaps(1, &ptr);
+			}
+			commandManager.get_list()->SetGraphicsRootDescriptorTable(0, descriptorHeapGroundCBVSRVUAV.get_GPU_handle(0));
+			commandManager.get_list()->SetGraphicsRootDescriptorTable(1, descriptorHeapGroundCBVSRVUAV.get_GPU_handle(2 + i));
+
+			commandManager.get_list()->SetPipelineState(groundShadowGraphicsPipelineState.get());
+			commandManager.get_list()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+
+			commandManager.get_list()->IASetVertexBuffers(0, 1, &peraPolygonVertexBufferView);
+
+			commandManager.get_list()->DrawInstanced(peraPolygonVertexNum, 1, 0, 0);
+			
+			//
+			
+			pdx12::resource_barrior(commandManager.get_list(), shadowMapResource[i], D3D12_RESOURCE_STATE_COMMON);
+		}
 
 
 		//
