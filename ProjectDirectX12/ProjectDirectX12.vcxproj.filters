@@ -27,6 +27,10 @@
     <FxCompile Include="ShaderFile\HighLuminance\VertexShader.hlsl" />
     <FxCompile Include="ShaderFile\MainColorDownSampling\VertexShader.hlsl" />
     <FxCompile Include="ShaderFile\MainColorDownSampling\PixelShader.hlsl" />
+    <FxCompile Include="ShaderFile\SimpleGround\VertexShader.hlsl" />
+    <FxCompile Include="ShaderFile\SimpleGround\PixelShader.hlsl" />
+    <FxCompile Include="ShaderFile\SimpleModel\ShadowVertexShader.hlsl" />
+    <FxCompile Include="ShaderFile\SimpleGround\ShadowVertexShader.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ShaderFile\SimpleModel\Header.hlsli" />
@@ -34,5 +38,6 @@
     <None Include="ShaderFile\PostEffect\Header.hlsli" />
     <None Include="ShaderFile\HighLuminance\Header.hlsli" />
     <None Include="ShaderFile\MainColorDownSampling\Header.hlsli" />
+    <None Include="ShaderFile\SimpleGround\Header.hlsli" />
   </ItemGroup>
 </Project>

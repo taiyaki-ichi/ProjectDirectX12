@@ -7,9 +7,9 @@ cbuffer SceneData : register(b0)
 	float3 eye;
 };
 
-cbuffer ModelData : register(b1)
+cbuffer GroundData : register(b1)
 {
-	matrix world[8];
+	matrix world;
 };
 
 matrix lightViewProj : register(b2);
