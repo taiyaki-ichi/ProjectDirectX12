@@ -351,59 +351,59 @@ int main()
 
 
 	//Gバッファのレンダーターゲット用のデスクリプタヒープ
-	pdx12::descriptor_heap descriptorHeapGBufferRTV{};
+	pdx12::descriptor_heap gBufferDescriptorHeapRTV{};
 	{
 		//アルベドカラー、法線、ワールド座標の3つ
-		descriptorHeapGBufferRTV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 3);
+		gBufferDescriptorHeapRTV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 3);
 
 		//アルベドカラーのレンダーターゲットビュー
-		pdx12::create_texture2D_RTV(device.get(), descriptorHeapGBufferRTV.get_CPU_handle(0), gBufferAlbedoColorResource.first.get(), G_BUFFER_ALBEDO_COLOR_FORMAT, 0, 0);
+		pdx12::create_texture2D_RTV(device.get(), gBufferDescriptorHeapRTV.get_CPU_handle(0), gBufferAlbedoColorResource.first.get(), G_BUFFER_ALBEDO_COLOR_FORMAT, 0, 0);
 
 		//法線のレンダーターゲットビュー
-		pdx12::create_texture2D_RTV(device.get(), descriptorHeapGBufferRTV.get_CPU_handle(1), gBufferNormalResource.first.get(), G_BUFFER_NORMAL_FORMAT, 0, 0);
+		pdx12::create_texture2D_RTV(device.get(), gBufferDescriptorHeapRTV.get_CPU_handle(1), gBufferNormalResource.first.get(), G_BUFFER_NORMAL_FORMAT, 0, 0);
 
 		//ワールド座標のレンダーターゲットビュー
-		pdx12::create_texture2D_RTV(device.get(), descriptorHeapGBufferRTV.get_CPU_handle(2), gBufferWorldPositionResource.first.get(), G_BUFFER_WORLD_POSITION_FORMAT, 0, 0);
+		pdx12::create_texture2D_RTV(device.get(), gBufferDescriptorHeapRTV.get_CPU_handle(2), gBufferWorldPositionResource.first.get(), G_BUFFER_WORLD_POSITION_FORMAT, 0, 0);
 	}
 
 	//モデルを書き込む時用のデスクリプタヒープ
 	//Gbufferに書き込む時とカメラからのデプスを取得する時に使用
-	pdx12::descriptor_heap descriptorHeapModelCBVSRVUAV{};
+	pdx12::descriptor_heap modelDescriptorHeapCBVSRVUAV{};
 	{
-		descriptorHeapModelCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 2 + LIGHT_VIEW_PROJ_MATRIX_NUM);
+		modelDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 2 + LIGHT_VIEW_PROJ_MATRIX_NUM);
 
 		//一つ目はSceneData
-		pdx12::create_CBV(device.get(), descriptorHeapModelCBVSRVUAV.get_CPU_handle(0), sceneDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(SceneData), 256));
+		pdx12::create_CBV(device.get(), modelDescriptorHeapCBVSRVUAV.get_CPU_handle(0), sceneDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(SceneData), 256));
 		//二つ目はModelData
-		pdx12::create_CBV(device.get(), descriptorHeapModelCBVSRVUAV.get_CPU_handle(1), modelDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(ModelData), 256));
+		pdx12::create_CBV(device.get(), modelDescriptorHeapCBVSRVUAV.get_CPU_handle(1), modelDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(ModelData), 256));
 
 		//3つ目以降はライトプロジェクション行列
 		for (std::size_t i = 0; i < LIGHT_VIEW_PROJ_MATRIX_NUM; i++)
-			pdx12::create_CBV(device.get(), descriptorHeapModelCBVSRVUAV.get_CPU_handle(2 + i), lightViewProjMatrixResource[i].first.get(), pdx12::alignment<UINT64>(sizeof(XMMATRIX), 256));
+			pdx12::create_CBV(device.get(), modelDescriptorHeapCBVSRVUAV.get_CPU_handle(2 + i), lightViewProjMatrixResource[i].first.get(), pdx12::alignment<UINT64>(sizeof(XMMATRIX), 256));
 	}
 
 	//地面のモデルを書き込む用のデスクリプタヒープ
 	//Gbufferに書き込む時とカメラからのデプスっを取得する時に使用
-	pdx12::descriptor_heap descriptorHeapGroundCBVSRVUAV{};
+	pdx12::descriptor_heap groundDescriptorHeapCBVSRVUAV{};
 	{
-		descriptorHeapGroundCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 2 + LIGHT_VIEW_PROJ_MATRIX_NUM);
+		groundDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 2 + LIGHT_VIEW_PROJ_MATRIX_NUM);
 
 		//一つ目はSceneData
-		pdx12::create_CBV(device.get(), descriptorHeapGroundCBVSRVUAV.get_CPU_handle(0), sceneDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(SceneData), 256));
+		pdx12::create_CBV(device.get(), groundDescriptorHeapCBVSRVUAV.get_CPU_handle(0), sceneDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(SceneData), 256));
 		//二つ目はGroundData
-		pdx12::create_CBV(device.get(), descriptorHeapGroundCBVSRVUAV.get_CPU_handle(1), groundDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(GroundData), 256));
+		pdx12::create_CBV(device.get(), groundDescriptorHeapCBVSRVUAV.get_CPU_handle(1), groundDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(GroundData), 256));
 
 		//3つ目以降はライトプロジェクション行列
 		for (std::size_t i = 0; i < LIGHT_VIEW_PROJ_MATRIX_NUM; i++)
-			pdx12::create_CBV(device.get(), descriptorHeapGroundCBVSRVUAV.get_CPU_handle(2 + i), lightViewProjMatrixResource[i].first.get(), pdx12::alignment<UINT64>(sizeof(XMMATRIX), 256));
+			pdx12::create_CBV(device.get(), groundDescriptorHeapCBVSRVUAV.get_CPU_handle(2 + i), lightViewProjMatrixResource[i].first.get(), pdx12::alignment<UINT64>(sizeof(XMMATRIX), 256));
 	}
 
 	//GBufferに書き込む際に使用するデプスバッファのビューを作る
-	pdx12::descriptor_heap descriptorHeapGBufferDSV{};
+	pdx12::descriptor_heap gBufferDescriptorHeapDSV{};
 	{
-		descriptorHeapGBufferDSV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1);
+		gBufferDescriptorHeapDSV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1);
 
-		pdx12::create_texture2D_DSV(device.get(), descriptorHeapGBufferDSV.get_CPU_handle(), depthBuffer.first.get(), DEPTH_BUFFER_FORMAT, 0);
+		pdx12::create_texture2D_DSV(device.get(), gBufferDescriptorHeapDSV.get_CPU_handle(), depthBuffer.first.get(), DEPTH_BUFFER_FORMAT, 0);
 	}
 
 	//シャドウマップを作成する際に使用するデプスバッファのビューを作るよう
@@ -417,140 +417,140 @@ int main()
 
 
 	//ディファードレンダリングを行う際に利用するSRVなどを作成する用のデスクリプタヒープ
-	pdx12::descriptor_heap descriptorHeapDefferredRenderingCBVSRVUAV{};
+	pdx12::descriptor_heap defferredRenderingDescriptorHeapCBVSRVUAV{};
 	{
 		//とりあえず4つ
 		//シーンデータ、アルベドカラー、法線、ワールド座標
-		descriptorHeapDefferredRenderingCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 4 + SHADOW_MAP_NUM);
+		defferredRenderingDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 4 + SHADOW_MAP_NUM);
 
 		//シーンデータ
-		pdx12::create_CBV(device.get(), descriptorHeapDefferredRenderingCBVSRVUAV.get_CPU_handle(0), 
+		pdx12::create_CBV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(0), 
 			sceneDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(SceneData), 256));
 
 		//アルベドカラー
-		pdx12::create_texture2D_SRV(device.get(), descriptorHeapDefferredRenderingCBVSRVUAV.get_CPU_handle(1), 
+		pdx12::create_texture2D_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(1), 
 			gBufferAlbedoColorResource.first.get(),G_BUFFER_ALBEDO_COLOR_FORMAT, 1, 0, 0, 0.f);
 
 		//法線
-		pdx12::create_texture2D_SRV(device.get(), descriptorHeapDefferredRenderingCBVSRVUAV.get_CPU_handle(2), 
+		pdx12::create_texture2D_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(2), 
 			gBufferNormalResource.first.get(),G_BUFFER_NORMAL_FORMAT, 1, 0, 0, 0.f);
 
 		//ワールド座標
-		pdx12::create_texture2D_SRV(device.get(), descriptorHeapDefferredRenderingCBVSRVUAV.get_CPU_handle(3), 
+		pdx12::create_texture2D_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(3), 
 			gBufferWorldPositionResource.first.get(),G_BUFFER_WORLD_POSITION_FORMAT, 1, 0, 0, 0.f);
 
 		//シャドウマップ
 		for (std::size_t i = 0; i < SHADOW_MAP_NUM; i++)
-			pdx12::create_texture2D_SRV(device.get(), descriptorHeapDefferredRenderingCBVSRVUAV.get_CPU_handle(4 + i),
+			pdx12::create_texture2D_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(4 + i),
 				shadowMapResource[i].first.get(), SHADOW_MAP_SRV_FORMAT, 1, 0, 0, 0.f);
 
 	}
 
 	//ディファードレンダリングでのライティングのレンダーターゲットのビューのデスクリプタヒープ
-	pdx12::descriptor_heap descriptorHeapDefferredRenderingRTV{};
+	pdx12::descriptor_heap defferredRenderingDescriptorHeapRTV{};
 	{
 		//1つめが通常のカラー、2つ目が高輝度
-		descriptorHeapDefferredRenderingRTV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 2);
+		defferredRenderingDescriptorHeapRTV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 2);
 
 		//通常のカラー
-		pdx12::create_texture2D_RTV(device.get(), descriptorHeapDefferredRenderingRTV.get_CPU_handle(0), mainColorResource.first.get(), MAIN_COLOR_RESOURCE_FORMAT, 0, 0);
+		pdx12::create_texture2D_RTV(device.get(), defferredRenderingDescriptorHeapRTV.get_CPU_handle(0), mainColorResource.first.get(), MAIN_COLOR_RESOURCE_FORMAT, 0, 0);
 		
 		//高輝度
-		pdx12::create_texture2D_RTV(device.get(), descriptorHeapDefferredRenderingRTV.get_CPU_handle(1), highLuminanceResource.first.get(), HIGH_LUMINANCE_FORMAT, 0, 0);
+		pdx12::create_texture2D_RTV(device.get(), defferredRenderingDescriptorHeapRTV.get_CPU_handle(1), highLuminanceResource.first.get(), HIGH_LUMINANCE_FORMAT, 0, 0);
 	}
 
 
 	//高輝度をダウンサンプリングする際のレンダーターゲットビューを作成するデスクリプタヒープ
-	pdx12::descriptor_heap descriptorHeapHighLuminanceRTV{};
+	pdx12::descriptor_heap highLuminanceDescriptorHeapRTV{};
 	{
-		descriptorHeapHighLuminanceRTV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV, SHRINKED_HIGH_LUMINANCE_NUM);
+		highLuminanceDescriptorHeapRTV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV, SHRINKED_HIGH_LUMINANCE_NUM);
 		for (std::size_t i = 0; i < SHRINKED_HIGH_LUMINANCE_NUM; i++)
-			pdx12::create_texture2D_RTV(device.get(), descriptorHeapHighLuminanceRTV.get_CPU_handle(i), shrinkedHighLuminanceResource[i].first.get(), SHRINKED_HIGH_LUMINANCE_FORMAT, 0, 0);
+			pdx12::create_texture2D_RTV(device.get(), highLuminanceDescriptorHeapRTV.get_CPU_handle(i), shrinkedHighLuminanceResource[i].first.get(), SHRINKED_HIGH_LUMINANCE_FORMAT, 0, 0);
 	}
 
 	//高輝度をダウンサンプリングする際に利用するSRVなどを作成する用のデスクリプタヒープ
-	pdx12::descriptor_heap descriptorHeapHighLuminanceCBVSRVUAV{};
+	pdx12::descriptor_heap highLuminanceDescriptorHeapCBVSRVUAV{};
 	{
 		//高輝度のリソースと縮小された高輝度のリソースのビューを作成する
-		descriptorHeapHighLuminanceCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1 + SHRINKED_HIGH_LUMINANCE_NUM);
+		highLuminanceDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1 + SHRINKED_HIGH_LUMINANCE_NUM);
 
 		//1つ目は通常の高輝度の高輝度のビュー
-		pdx12::create_texture2D_SRV(device.get(), descriptorHeapHighLuminanceCBVSRVUAV.get_CPU_handle(0),
+		pdx12::create_texture2D_SRV(device.get(), highLuminanceDescriptorHeapCBVSRVUAV.get_CPU_handle(0),
 			highLuminanceResource.first.get(), HIGH_LUMINANCE_FORMAT, 1, 0, 0, 0.f);
 
 		//残りは縮小された高輝度のリソースのビューを順に作成していく
 		for (std::size_t i = 0; i < SHRINKED_HIGH_LUMINANCE_NUM; i++)
-			pdx12::create_texture2D_SRV(device.get(), descriptorHeapHighLuminanceCBVSRVUAV.get_CPU_handle(1 + i),
+			pdx12::create_texture2D_SRV(device.get(), highLuminanceDescriptorHeapCBVSRVUAV.get_CPU_handle(1 + i),
 				shrinkedHighLuminanceResource[i].first.get(), SHRINKED_HIGH_LUMINANCE_FORMAT, 1, 0, 0, 0.f);
 	}
 
 	//メインカラーをダウンサンプリングする際に使用するレンダーターゲット用のデスクリプタヒープ
-	pdx12::descriptor_heap descriptorHeapMainColorDownSamplingRTV{};
+	pdx12::descriptor_heap mainColorDownSamplingDescriptorHeapRTV{};
 	{
-		descriptorHeapMainColorDownSamplingRTV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV, SHRINKED_MAIN_COLOR_RESOURCE_NUM);
+		mainColorDownSamplingDescriptorHeapRTV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV, SHRINKED_MAIN_COLOR_RESOURCE_NUM);
 		for(std::size_t i=0;i<SHRINKED_MAIN_COLOR_RESOURCE_NUM;i++)
-			pdx12::create_texture2D_RTV(device.get(), descriptorHeapMainColorDownSamplingRTV.get_CPU_handle(i), 
+			pdx12::create_texture2D_RTV(device.get(), mainColorDownSamplingDescriptorHeapRTV.get_CPU_handle(i), 
 				shrinkedMainColorResource[i].first.get(),SHRINKED_HIGH_LUMINANCE_FORMAT, 0, 0);
 	}
 
 	//メインカラーをダウンサンプリングする際に使用するシェーダリソース用のデスクリプタヒープ
-	pdx12::descriptor_heap descriptorHeapMainColorDownSamplingCBVSRVUAV{};
+	pdx12::descriptor_heap mainColorDownSamplingDescriptorHeapCBVSRVUAV{};
 	{
 		//1つ目は通常のサイズのメインカラー、2つ目以降は縮小されたメインカラー
-		descriptorHeapMainColorDownSamplingCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1 + SHRINKED_MAIN_COLOR_RESOURCE_NUM);
+		mainColorDownSamplingDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1 + SHRINKED_MAIN_COLOR_RESOURCE_NUM);
 
 		//1つ目は通常のサイズのメインカラーのシェーダリソースビュー
-		pdx12::create_texture2D_SRV(device.get(), descriptorHeapMainColorDownSamplingCBVSRVUAV.get_CPU_handle(0),
+		pdx12::create_texture2D_SRV(device.get(), mainColorDownSamplingDescriptorHeapCBVSRVUAV.get_CPU_handle(0),
 			mainColorResource.first.get(), MAIN_COLOR_RESOURCE_FORMAT, 1, 0, 0, 0.f);
 
 		//2つ目以降は縮小されたメインカラーのシェーダリソースビュー
 		for (std::size_t i = 0; i < SHRINKED_MAIN_COLOR_RESOURCE_NUM; i++)
 		{
-			pdx12::create_texture2D_SRV(device.get(), descriptorHeapMainColorDownSamplingCBVSRVUAV.get_CPU_handle(1 + i),
+			pdx12::create_texture2D_SRV(device.get(), mainColorDownSamplingDescriptorHeapCBVSRVUAV.get_CPU_handle(1 + i),
 				shrinkedMainColorResource[i].first.get(), SHRINKED_MAIN_COLOR_RESOURCE_FORMAT, 1, 0, 0, 0.f);
 		}
 	}
 
 	//フレームバッファのビューを作成する用のデスクリプタヒープ
-	pdx12::descriptor_heap descriptorHeapFrameBufferRTV{};
+	pdx12::descriptor_heap frameBufferDescriptorHeapRTV{};
 	{
-		descriptorHeapFrameBufferRTV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV, FRAME_BUFFER_NUM);
+		frameBufferDescriptorHeapRTV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV, FRAME_BUFFER_NUM);
 
 		for (std::size_t i = 0; i < FRAME_BUFFER_NUM; i++)
-			pdx12::create_texture2D_RTV(device.get(), descriptorHeapFrameBufferRTV.get_CPU_handle(i), frameBufferResources[i].first.get(), FRAME_BUFFER_FORMAT, 0, 0);
+			pdx12::create_texture2D_RTV(device.get(), frameBufferDescriptorHeapRTV.get_CPU_handle(i), frameBufferResources[i].first.get(), FRAME_BUFFER_FORMAT, 0, 0);
 	}
 
 	//ポストえっふぇくとにに利用するSRVなどを作成する用のデスクリプタヒープ
-	pdx12::descriptor_heap descriptorHeapPostEffectCBVSRVUAV{};
+	pdx12::descriptor_heap postEffectDescriptorHeapCBVSRVUAV{};
 	{
 		//1つ目はシーンデータ、2つ目はポストエフェクトのデータ、3つ目は通常のカラー、4つ目から縮小された高輝度のリソース
 		//12つ目からは縮小されたメインカラーのリソース、20つ目はデプスバッファ
-		descriptorHeapPostEffectCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1 + 1 + 1 + SHRINKED_HIGH_LUMINANCE_NUM + SHRINKED_MAIN_COLOR_RESOURCE_NUM + 1);
+		postEffectDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1 + 1 + 1 + SHRINKED_HIGH_LUMINANCE_NUM + SHRINKED_MAIN_COLOR_RESOURCE_NUM + 1);
 
 		//シーンデータ
-		pdx12::create_CBV(device.get(), descriptorHeapPostEffectCBVSRVUAV.get_CPU_handle(0),
+		pdx12::create_CBV(device.get(), postEffectDescriptorHeapCBVSRVUAV.get_CPU_handle(0),
 			sceneDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(SceneData), 256));
 
 		//ポストエフェクトのデータ
-		pdx12::create_CBV(device.get(), descriptorHeapPostEffectCBVSRVUAV.get_CPU_handle(1),
+		pdx12::create_CBV(device.get(), postEffectDescriptorHeapCBVSRVUAV.get_CPU_handle(1),
 			postEffectDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(PostEffectData), 256));
 
 		//メインの色
-		pdx12::create_texture2D_SRV(device.get(), descriptorHeapPostEffectCBVSRVUAV.get_CPU_handle(1 + 1),
+		pdx12::create_texture2D_SRV(device.get(), postEffectDescriptorHeapCBVSRVUAV.get_CPU_handle(1 + 1),
 			mainColorResource.first.get(), MAIN_COLOR_RESOURCE_FORMAT, 1, 0, 0, 0.f);
 
 		//縮小された高輝度
 		for (std::size_t i = 0; i < SHRINKED_HIGH_LUMINANCE_NUM; i++)
-			pdx12::create_texture2D_SRV(device.get(), descriptorHeapPostEffectCBVSRVUAV.get_CPU_handle(1 + 1 + 1 + i),
+			pdx12::create_texture2D_SRV(device.get(), postEffectDescriptorHeapCBVSRVUAV.get_CPU_handle(1 + 1 + 1 + i),
 				shrinkedHighLuminanceResource[i].first.get(), SHRINKED_HIGH_LUMINANCE_FORMAT, 1, 0, 0, 0.f);
 
 		//縮小されたメインカラー
 		for (std::size_t i = 0; i < SHRINKED_MAIN_COLOR_RESOURCE_NUM; i++)
-			pdx12::create_texture2D_SRV(device.get(), descriptorHeapPostEffectCBVSRVUAV.get_CPU_handle(1 + 1 + 1 + SHRINKED_HIGH_LUMINANCE_NUM + i),
+			pdx12::create_texture2D_SRV(device.get(), postEffectDescriptorHeapCBVSRVUAV.get_CPU_handle(1 + 1 + 1 + SHRINKED_HIGH_LUMINANCE_NUM + i),
 				shrinkedMainColorResource[i].first.get(), SHRINKED_MAIN_COLOR_RESOURCE_FORMAT, 1, 0, 0, 0.f);
 
 		//デプスバッファ
-		pdx12::create_texture2D_SRV(device.get(), descriptorHeapPostEffectCBVSRVUAV.get_CPU_handle(1 + 1 + 1 + SHRINKED_HIGH_LUMINANCE_NUM + SHRINKED_MAIN_COLOR_RESOURCE_NUM),
+		pdx12::create_texture2D_SRV(device.get(), postEffectDescriptorHeapCBVSRVUAV.get_CPU_handle(1 + 1 + 1 + SHRINKED_HIGH_LUMINANCE_NUM + SHRINKED_MAIN_COLOR_RESOURCE_NUM),
 			depthBuffer.first.get(), DEPTH_BUFFER_SRV_FORMAT, 1, 0, 0, 0.f);
 	}
 
@@ -847,21 +847,21 @@ int main()
 
 		//全てのGbufferをクリアする
 		//アルベドカラー
-		commandManager.get_list()->ClearRenderTargetView(descriptorHeapGBufferRTV.get_CPU_handle(0), grayColor.data(), 0, nullptr);
+		commandManager.get_list()->ClearRenderTargetView(gBufferDescriptorHeapRTV.get_CPU_handle(0), grayColor.data(), 0, nullptr);
 		//法線
-		commandManager.get_list()->ClearRenderTargetView(descriptorHeapGBufferRTV.get_CPU_handle(1), zeroFloat4.data(), 0, nullptr);
+		commandManager.get_list()->ClearRenderTargetView(gBufferDescriptorHeapRTV.get_CPU_handle(1), zeroFloat4.data(), 0, nullptr);
 		//ワールド座標
-		commandManager.get_list()->ClearRenderTargetView(descriptorHeapGBufferRTV.get_CPU_handle(2), zeroFloat4.data(), 0, nullptr);
+		commandManager.get_list()->ClearRenderTargetView(gBufferDescriptorHeapRTV.get_CPU_handle(2), zeroFloat4.data(), 0, nullptr);
 
 		pdx12::resource_barrior(commandManager.get_list(), depthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-		commandManager.get_list()->ClearDepthStencilView(descriptorHeapGBufferDSV.get_CPU_handle(), D3D12_CLEAR_FLAG_DEPTH, 1.f, 0.f, 0, nullptr);
+		commandManager.get_list()->ClearDepthStencilView(gBufferDescriptorHeapDSV.get_CPU_handle(), D3D12_CLEAR_FLAG_DEPTH, 1.f, 0.f, 0, nullptr);
 
 		D3D12_CPU_DESCRIPTOR_HANDLE gBufferRenderTargetCPUHandle[] = {
-			descriptorHeapGBufferRTV.get_CPU_handle(0),//アルベドカラー
-			descriptorHeapGBufferRTV.get_CPU_handle(1),//法線
-			descriptorHeapGBufferRTV.get_CPU_handle(2),//ワールド座標
+			gBufferDescriptorHeapRTV.get_CPU_handle(0),//アルベドカラー
+			gBufferDescriptorHeapRTV.get_CPU_handle(1),//法線
+			gBufferDescriptorHeapRTV.get_CPU_handle(2),//ワールド座標
 		};
-		auto depthBufferCPUHandle = descriptorHeapGBufferDSV.get_CPU_handle(0);
+		auto depthBufferCPUHandle = gBufferDescriptorHeapDSV.get_CPU_handle(0);
 		commandManager.get_list()->OMSetRenderTargets(std::size(gBufferRenderTargetCPUHandle), gBufferRenderTargetCPUHandle, false, &depthBufferCPUHandle);
 
 		//
@@ -870,10 +870,10 @@ int main()
 
 		commandManager.get_list()->SetGraphicsRootSignature(modelRootSignature.get());
 		{
-			auto ptr = descriptorHeapModelCBVSRVUAV.get();
+			auto ptr = modelDescriptorHeapCBVSRVUAV.get();
 			commandManager.get_list()->SetDescriptorHeaps(1, &ptr);
 		}
-		commandManager.get_list()->SetGraphicsRootDescriptorTable(0, descriptorHeapModelCBVSRVUAV.get_GPU_handle(0));
+		commandManager.get_list()->SetGraphicsRootDescriptorTable(0, modelDescriptorHeapCBVSRVUAV.get_GPU_handle(0));
 		commandManager.get_list()->SetPipelineState(modelGBufferGraphicsPipelineState.get());
 		commandManager.get_list()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
@@ -887,10 +887,10 @@ int main()
 
 		commandManager.get_list()->SetGraphicsRootSignature(groundRootSignature.get());
 		{
-			auto ptr = descriptorHeapGroundCBVSRVUAV.get();
+			auto ptr = groundDescriptorHeapCBVSRVUAV.get();
 			commandManager.get_list()->SetDescriptorHeaps(1, &ptr);
 		}
-		commandManager.get_list()->SetGraphicsRootDescriptorTable(0, descriptorHeapGroundCBVSRVUAV.get_GPU_handle(0));
+		commandManager.get_list()->SetGraphicsRootDescriptorTable(0, groundDescriptorHeapCBVSRVUAV.get_GPU_handle(0));
 		commandManager.get_list()->SetPipelineState(groundGBufferGraphicsPipelineState.get());
 		commandManager.get_list()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
@@ -931,11 +931,11 @@ int main()
 			//モデルの影
 			commandManager.get_list()->SetGraphicsRootSignature(modelRootSignature.get());
 			{
-				auto ptr = descriptorHeapModelCBVSRVUAV.get();
+				auto ptr = modelDescriptorHeapCBVSRVUAV.get();
 				commandManager.get_list()->SetDescriptorHeaps(1, &ptr);
 			}
-			commandManager.get_list()->SetGraphicsRootDescriptorTable(0, descriptorHeapModelCBVSRVUAV.get_GPU_handle(0));
-			commandManager.get_list()->SetGraphicsRootDescriptorTable(1, descriptorHeapModelCBVSRVUAV.get_GPU_handle(2 + i));
+			commandManager.get_list()->SetGraphicsRootDescriptorTable(0, modelDescriptorHeapCBVSRVUAV.get_GPU_handle(0));
+			commandManager.get_list()->SetGraphicsRootDescriptorTable(1, modelDescriptorHeapCBVSRVUAV.get_GPU_handle(2 + i));
 
 			commandManager.get_list()->SetPipelineState(modelShdowGraphicsPipelineState.get());
 			commandManager.get_list()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -948,11 +948,11 @@ int main()
 			//地面の影
 			commandManager.get_list()->SetGraphicsRootSignature(groundRootSignature.get());
 			{
-				auto ptr = descriptorHeapGroundCBVSRVUAV.get();
+				auto ptr = groundDescriptorHeapCBVSRVUAV.get();
 				commandManager.get_list()->SetDescriptorHeaps(1, &ptr);
 			}
-			commandManager.get_list()->SetGraphicsRootDescriptorTable(0, descriptorHeapGroundCBVSRVUAV.get_GPU_handle(0));
-			commandManager.get_list()->SetGraphicsRootDescriptorTable(1, descriptorHeapGroundCBVSRVUAV.get_GPU_handle(2 + i));
+			commandManager.get_list()->SetGraphicsRootDescriptorTable(0, groundDescriptorHeapCBVSRVUAV.get_GPU_handle(0));
+			commandManager.get_list()->SetGraphicsRootDescriptorTable(1, groundDescriptorHeapCBVSRVUAV.get_GPU_handle(2 + i));
 
 			commandManager.get_list()->SetPipelineState(groundShadowGraphicsPipelineState.get());
 			commandManager.get_list()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
@@ -978,23 +978,23 @@ int main()
 		pdx12::resource_barrior(commandManager.get_list(), highLuminanceResource, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 		//メインカラーのリソースのクリア
-		commandManager.get_list()->ClearRenderTargetView(descriptorHeapDefferredRenderingRTV.get_CPU_handle(0), grayColor.data(), 0, nullptr);
+		commandManager.get_list()->ClearRenderTargetView(defferredRenderingDescriptorHeapRTV.get_CPU_handle(0), grayColor.data(), 0, nullptr);
 		//高輝度のリソースのクリア
-		commandManager.get_list()->ClearRenderTargetView(descriptorHeapDefferredRenderingRTV.get_CPU_handle(1), zeroFloat4.data(), 0, nullptr);
+		commandManager.get_list()->ClearRenderTargetView(defferredRenderingDescriptorHeapRTV.get_CPU_handle(1), zeroFloat4.data(), 0, nullptr);
 
-		//auto backBufferCPUHandle = descriptorHeapFrameBufferRTV.get_CPU_handle(backBufferIndex);
+		//auto backBufferCPUHandle = frameBufferDescriptorHeapRTV.get_CPU_handle(backBufferIndex);
 		D3D12_CPU_DESCRIPTOR_HANDLE deferredRenderingRTVCPUHandle[] = {
-			descriptorHeapDefferredRenderingRTV.get_CPU_handle(0),//メインの色
-			descriptorHeapDefferredRenderingRTV.get_CPU_handle(1),//高輝度
+			defferredRenderingDescriptorHeapRTV.get_CPU_handle(0),//メインの色
+			defferredRenderingDescriptorHeapRTV.get_CPU_handle(1),//高輝度
 		};
 		commandManager.get_list()->OMSetRenderTargets(std::size(deferredRenderingRTVCPUHandle), deferredRenderingRTVCPUHandle, false, nullptr);
 
 		commandManager.get_list()->SetGraphicsRootSignature(deferredRenderingRootSignature.get());
 		{
-			auto ptr = descriptorHeapDefferredRenderingCBVSRVUAV.get();
+			auto ptr = defferredRenderingDescriptorHeapCBVSRVUAV.get();
 			commandManager.get_list()->SetDescriptorHeaps(1, &ptr);
 		}
-		commandManager.get_list()->SetGraphicsRootDescriptorTable(0, descriptorHeapDefferredRenderingCBVSRVUAV.get_GPU_handle(0));
+		commandManager.get_list()->SetGraphicsRootDescriptorTable(0, defferredRenderingDescriptorHeapCBVSRVUAV.get_GPU_handle(0));
 		commandManager.get_list()->SetPipelineState(deferredRenderringGraphicsPipelineState.get());
 		//LISTではない
 		commandManager.get_list()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
@@ -1027,18 +1027,18 @@ int main()
 
 				pdx12::resource_barrior(commandManager.get_list(), shrinkedHighLuminanceResource[i], D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-				commandManager.get_list()->ClearRenderTargetView(descriptorHeapHighLuminanceRTV.get_CPU_handle(i), zeroFloat4.data(), 0, nullptr);
+				commandManager.get_list()->ClearRenderTargetView(highLuminanceDescriptorHeapRTV.get_CPU_handle(i), zeroFloat4.data(), 0, nullptr);
 
-				auto renderTargetCPUHandle = descriptorHeapHighLuminanceRTV.get_CPU_handle(i);
+				auto renderTargetCPUHandle = highLuminanceDescriptorHeapRTV.get_CPU_handle(i);
 				commandManager.get_list()->OMSetRenderTargets(1, &renderTargetCPUHandle, false, nullptr);
 
 				commandManager.get_list()->SetGraphicsRootSignature(highLuminanceRootSignature.get());
 				{
-					auto ptr = descriptorHeapHighLuminanceCBVSRVUAV.get();
+					auto ptr = highLuminanceDescriptorHeapCBVSRVUAV.get();
 					commandManager.get_list()->SetDescriptorHeaps(1, &ptr);
 				}
 				//ルートのハンドルはループごとにずらしサイズが１つ大きいテクスチャを参照できるようにする
-				commandManager.get_list()->SetGraphicsRootDescriptorTable(0, descriptorHeapHighLuminanceCBVSRVUAV.get_GPU_handle(i));
+				commandManager.get_list()->SetGraphicsRootDescriptorTable(0, highLuminanceDescriptorHeapCBVSRVUAV.get_GPU_handle(i));
 				commandManager.get_list()->SetPipelineState(highLuminanceGraphicsPipelineState.get());
 				//LISTではない
 				commandManager.get_list()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
@@ -1071,18 +1071,18 @@ int main()
 
 				pdx12::resource_barrior(commandManager.get_list(), shrinkedMainColorResource[i], D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-				commandManager.get_list()->ClearRenderTargetView(descriptorHeapMainColorDownSamplingRTV.get_CPU_handle(i), zeroFloat4.data(), 0, nullptr);
+				commandManager.get_list()->ClearRenderTargetView(mainColorDownSamplingDescriptorHeapRTV.get_CPU_handle(i), zeroFloat4.data(), 0, nullptr);
 
-				auto renderTargetCPUHandle = descriptorHeapMainColorDownSamplingRTV.get_CPU_handle(i);
+				auto renderTargetCPUHandle = mainColorDownSamplingDescriptorHeapRTV.get_CPU_handle(i);
 				commandManager.get_list()->OMSetRenderTargets(1, &renderTargetCPUHandle, false, nullptr);
 
 				commandManager.get_list()->SetGraphicsRootSignature(mainColorDownSamplingRootSignature.get());
 				{
-					auto ptr = descriptorHeapMainColorDownSamplingCBVSRVUAV.get();
+					auto ptr = mainColorDownSamplingDescriptorHeapCBVSRVUAV.get();
 					commandManager.get_list()->SetDescriptorHeaps(1, &ptr);
 				}
 				//ルートのハンドルはループごとにずらしサイズが１つ大きいテクスチャを参照できるようにする
-				commandManager.get_list()->SetGraphicsRootDescriptorTable(0, descriptorHeapMainColorDownSamplingCBVSRVUAV.get_GPU_handle(i));
+				commandManager.get_list()->SetGraphicsRootDescriptorTable(0, mainColorDownSamplingDescriptorHeapCBVSRVUAV.get_GPU_handle(i));
 				commandManager.get_list()->SetPipelineState(mainColorDownSamplingPipelineState.get());
 				//LISTではない
 				commandManager.get_list()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
@@ -1104,18 +1104,18 @@ int main()
 
 		pdx12::resource_barrior(commandManager.get_list(), frameBufferResources[backBufferIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-		commandManager.get_list()->ClearRenderTargetView(descriptorHeapFrameBufferRTV.get_CPU_handle(backBufferIndex), grayColor.data(), 0, nullptr);
+		commandManager.get_list()->ClearRenderTargetView(frameBufferDescriptorHeapRTV.get_CPU_handle(backBufferIndex), grayColor.data(), 0, nullptr);
 
-		auto frameBufferCPUHandle = descriptorHeapFrameBufferRTV.get_CPU_handle(backBufferIndex);
+		auto frameBufferCPUHandle = frameBufferDescriptorHeapRTV.get_CPU_handle(backBufferIndex);
 		commandManager.get_list()->OMSetRenderTargets(1, &frameBufferCPUHandle, false, &depthBufferCPUHandle);
 
 		commandManager.get_list()->SetGraphicsRootSignature(postEffectRootSignature.get());
 		{
-			auto ptr = descriptorHeapPostEffectCBVSRVUAV.get();
+			auto ptr = postEffectDescriptorHeapCBVSRVUAV.get();
 			commandManager.get_list()->SetDescriptorHeaps(1, &ptr);
 		}
 		//ルートのハンドルはループごとにずらしサイズが１つ大きいテクスチャを参照できるようにする
-		commandManager.get_list()->SetGraphicsRootDescriptorTable(0, descriptorHeapPostEffectCBVSRVUAV.get_GPU_handle(0));
+		commandManager.get_list()->SetGraphicsRootDescriptorTable(0, postEffectDescriptorHeapCBVSRVUAV.get_GPU_handle(0));
 		commandManager.get_list()->SetPipelineState(postEffectGraphicsPipelineState.get());
 		//LISTではない
 		commandManager.get_list()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
