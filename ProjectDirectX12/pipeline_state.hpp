@@ -154,5 +154,20 @@ namespace pdx12
 		return release_unique_ptr<ID3D12PipelineState>{tmp};
 	}
 
+	inline release_unique_ptr<ID3D12PipelineState> create_compute_pipeline(ID3D12Device* device,
+		ID3D12RootSignature* rootSignature, ID3DBlob* computeShader)
+	{
+		D3D12_COMPUTE_PIPELINE_STATE_DESC computePipelineDesc{};
+		computePipelineDesc.CS.pShaderBytecode = computeShader->GetBufferPointer();
+		computePipelineDesc.CS.BytecodeLength = computeShader->GetBufferSize();
+		computePipelineDesc.pRootSignature = rootSignature;
 
+		ID3D12PipelineState* tmp = nullptr;
+		if (FAILED(device->CreateComputePipelineState(&computePipelineDesc, IID_PPV_ARGS(&tmp))))
+		{
+			THROW_PDX12_EXCEPTION("failed CreateComputePipelineState");
+		}
+
+		return release_unique_ptr<ID3D12PipelineState>{tmp};
+	}
 }

@@ -25,7 +25,7 @@ using namespace DirectX;
 //TODO: 置く場所
 constexpr std::size_t SHADOW_MAP_NUM = 3;
 
-constexpr std::size_t MAX_POINT_LIGHT_NUM = 1000;
+constexpr std::size_t MAX_POINT_LIGHT_NUM = 50;
 
 struct PointLight
 {
@@ -179,6 +179,12 @@ int main()
 	//シャドウマップと同じ数
 	constexpr std::size_t LIGHT_VIEW_PROJ_MATRIX_NUM = SHADOW_MAP_NUM;
 
+	//ポイントライトのインデックスを格納するリソースのフォーマット
+	constexpr DXGI_FORMAT POINT_LIGHT_INDEX_RESOURCE_FORMAT = DXGI_FORMAT_R32_UINT;
+
+	constexpr std::size_t LIGHT_CULLING_TILE_WIDTH = 16;
+	constexpr std::size_t LIGHT_CULLING_TILE_HEIGHT = 16;
+	constexpr std::size_t LIGHT_CULLING_TILE_NUM = LIGHT_CULLING_TILE_WIDTH * LIGHT_CULLING_TILE_HEIGHT;
 
 	//
 	//基本的な部分の作成
@@ -385,6 +391,10 @@ int main()
 		for (std::size_t i = 0; i < LIGHT_VIEW_PROJ_MATRIX_NUM; i++)
 			lightViewProjMatrixResource[i] = pdx12::create_commited_upload_buffer_resource(device.get(), pdx12::alignment<UINT64>(sizeof(XMMATRIX), 256));
 	}
+
+	//ポイントライトのインデックスを格納するリソース
+	auto pointLightIndexResource = pdx12::create_commited_texture_resource(device.get(), POINT_LIGHT_INDEX_RESOURCE_FORMAT, MAX_POINT_LIGHT_NUM * LIGHT_CULLING_TILE_NUM,
+		1, 1, 1, 1, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, nullptr);
 
 	//
 	//デスクリプタヒープの作成
@@ -607,6 +617,29 @@ int main()
 			depthBuffer.first.get(), DEPTH_BUFFER_SRV_FORMAT, 1, 0, 0, 0.f);
 	}
 
+	//ライトカリングに使用する定数バッファのビューなどを作成する用のディスクリプタヒープ
+	pdx12::descriptor_heap lightCullingDescriptorHeapCBVSRVUAV{};
+	{
+		//CameraData、LightData、DepthBuffer、PointLightIndex
+		lightCullingDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 4);
+
+		//CameraData
+		pdx12::create_CBV(device.get(), lightCullingDescriptorHeapCBVSRVUAV.get_CPU_handle(0),
+			cameraDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(CameraData), 256));
+
+		//LightData
+		pdx12::create_CBV(device.get(), lightCullingDescriptorHeapCBVSRVUAV.get_CPU_handle(1),
+			lightDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(LightData), 256));
+
+		//DepthBuffer
+		pdx12::create_texture2D_SRV(device.get(), lightCullingDescriptorHeapCBVSRVUAV.get_CPU_handle(2),
+			depthBuffer.first.get(), DEPTH_BUFFER_SRV_FORMAT, 1, 0, 0, 0.f);
+
+		//PointLightIndex
+		pdx12::create_texture1D_UAV(device.get(), lightCullingDescriptorHeapCBVSRVUAV.get_CPU_handle(3),
+			pointLightIndexResource.first.get(), POINT_LIGHT_INDEX_RESOURCE_FORMAT, nullptr, 0);
+	}
+
 
 	//
 	//シェーダの作成
@@ -637,6 +670,9 @@ int main()
 	//ポストエフェクトをかけるシェーダ
 	auto postEffectVertexShader = pdx12::create_shader(L"ShaderFile/PostEffect/VertexShader.hlsl", "main", "vs_5_0");
 	auto postEffectPixelShader = pdx12::create_shader(L"ShaderFile/PostEffect/PixelShader.hlsl", "main", "ps_5_0");
+
+	//ライトカリング用のシェーダ
+	auto lightCullingComputeShader = pdx12::create_shader(L"ShaderFile/LightCulling/ComputeShader.hlsl", "main", "cs_5_0");
 
 	//
 	//ルートシグネチャとパイプラインの作成
@@ -715,6 +751,11 @@ int main()
 		{ FRAME_BUFFER_FORMAT }, { postEffectVertexShader.get(),postEffectPixelShader.get() }
 	, false, false, D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 
+
+	auto lightCullingRootSignater = pdx12::create_root_signature(device.get(),
+		{ { {/*CameraData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*LightData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*DepthBuffer*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV},{/*PointLightIndex*/D3D12_DESCRIPTOR_RANGE_TYPE_UAV} } }, {});
+
+	auto lightCullingComputePipelineState = pdx12::create_compute_pipeline(device.get(), lightCullingRootSignater.get(), lightCullingComputeShader.get());
 
 	//
 	//その他定数
@@ -1038,6 +1079,21 @@ int main()
 			
 			pdx12::resource_barrior(commandManager.get_list(), shadowMapResource[i], D3D12_RESOURCE_STATE_COMMON);
 		}
+
+		//
+		//ライトカリング
+		//
+
+		pdx12::resource_barrior(commandManager.get_list(), pointLightIndexResource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		commandManager.get_list()->SetComputeRootSignature(lightCullingRootSignater.get());
+		{
+			auto ptr = lightCullingDescriptorHeapCBVSRVUAV.get();
+			commandManager.get_list()->SetDescriptorHeaps(1, &ptr);
+		}
+		commandManager.get_list()->SetComputeRootDescriptorTable(0, lightCullingDescriptorHeapCBVSRVUAV.get_GPU_handle(0));
+		commandManager.get_list()->SetPipelineState(lightCullingComputePipelineState.get());
+		commandManager.get_list()->Dispatch(LIGHT_CULLING_TILE_WIDTH, LIGHT_CULLING_TILE_HEIGHT, 1);
+		pdx12::resource_barrior(commandManager.get_list(), pointLightIndexResource, D3D12_RESOURCE_STATE_COMMON);
 
 
 		//

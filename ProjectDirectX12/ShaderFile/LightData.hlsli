@@ -1,6 +1,6 @@
 
 static const int SHADOW_MAP_NUM = 3;
-static const int MAX_POINT_LIGHT_NUM = 1000;
+static const int MAX_POINT_LIGHT_NUM = 50;
 
 struct DirectionLight
 {
