@@ -39,5 +39,7 @@
     <None Include="ShaderFile\HighLuminance\Header.hlsli" />
     <None Include="ShaderFile\MainColorDownSampling\Header.hlsli" />
     <None Include="ShaderFile\SimpleGround\Header.hlsli" />
+    <None Include="ShaderFile\CameraData.hlsli" />
+    <None Include="ShaderFile\LightData.hlsli" />
   </ItemGroup>
 </Project>

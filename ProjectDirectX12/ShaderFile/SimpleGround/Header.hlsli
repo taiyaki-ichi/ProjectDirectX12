@@ -1,18 +1,26 @@
-cbuffer SceneData : register(b0)
-{
-	matrix view;
-	matrix proj;
-	float4 lightColor;
-	float4 lightDir;
-	float3 eye;
-};
+#include"../CameraData.hlsli" 
+#include"../LightData.hlsli" 
 
-cbuffer GroundData : register(b1)
+cbuffer CameraDataConstantBuffer : register(b0)
+{
+	CameraData cameraData;
+}
+
+//‚¢‚ç‚È‚¢Š›
+cbuffer LightDataConstantBuffer : register(b1)
+{
+	LightData lightData;
+}
+
+cbuffer GroundData : register(b2)
 {
 	matrix world;
 };
 
-matrix lightViewProj : register(b2);
+cbuffer LightViewProj : register(b3)
+{
+	matrix lightViewProj;
+}
 
 struct VSOutput
 {

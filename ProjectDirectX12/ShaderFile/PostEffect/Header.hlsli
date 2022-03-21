@@ -1,14 +1,19 @@
+#include"../CameraData.hlsli"
+#include"../LightData.hlsli"
 
-cbuffer SceneData : register(b0)
+//Žg‚Á‚Ä‚È‚¢‚©‚à
+cbuffer CameraDataConstantBuffer : register(b0)
 {
-	matrix view;
-	matrix proj;
-	float4 lightColor;
-	float4 lightDir;
-	float3 eye;
-};
+	CameraData cameraData;
+}
 
-cbuffer PostEffectData
+//Žg‚Á‚Ä‚È‚¢‚©‚à
+cbuffer LightDataConstantBuffer : register(b1)
+{
+	LightData lightData;
+}
+
+cbuffer PostEffectData : register(b2)
 {
 	float2 depthDiffCenter;
 	float depthDiffPower;

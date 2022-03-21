@@ -10,25 +10,24 @@ PSOutput main(VSOutput input)
 
 
 	//–@ü‚ğ0,1‚Ì”ÍˆÍ‚©‚ç-1,1‚Ì”ÍˆÍ‚Éû‚ß‚é
-	normal = mul(view,(normal * 2.f) - 1.f);
+	normal = mul(cameraData.view,(normal * 2.f) - 1.f);
 
-	float3 diffuse = lightColor * 0.45 * saturate(dot(normal.xyz, normalize(mul(view,lightDir))));
+	float3 diffuse = lightData.directionLight.color * 0.45 * saturate(dot(normal.xyz, normalize(mul(cameraData.view, lightData.directionLight.dir))));
 	float3 ambient = albedoColor * 0.5f;
 
 	//Œõ‚ª”½Ë‚·‚é•ûŒü
-	float3 refLight = normalize(reflect(lightDir, mul(view, normal.xyz)));
+	float3 refLight = normalize(reflect(lightData.directionLight.dir, mul(cameraData.view, normal.xyz)));
 	//–Úü‚Ì•ûŒü
-	float3 ray = normalize(eye - worldPosition);
-	float3 specular = lightColor * 0.4f * pow(saturate(dot(refLight, ray)), 10.f);
+	float3 ray = normalize(cameraData.eyePos - worldPosition);
+	float3 specular = lightData.directionLight.color * 0.4f * pow(saturate(dot(refLight, ray)), lightData.specPow);
 
 	output.color = float4(ambient + diffuse + specular, 1);
 
+	float4 lightPos[SHADOW_MAP_NUM];
+	for (int i = 0; i < SHADOW_MAP_NUM; i++)
+		lightPos[i] = mul(lightData.directionLightViewProj[i], worldPosition);
 
-	float4 lightPos[3];
-	for (int i = 0; i < 3; i++)
-		lightPos[i] = mul(lightViewProj[i], worldPosition);
-
-	for (int i = 0; i < 3; i++)
+	for (int i = 0; i < SHADOW_MAP_NUM; i++)
 	{
 		float z = lightPos[i].z / lightPos[i].w;
 

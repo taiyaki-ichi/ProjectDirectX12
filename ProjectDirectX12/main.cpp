@@ -25,19 +25,53 @@ using namespace DirectX;
 //TODO: 置く場所
 constexpr std::size_t SHADOW_MAP_NUM = 3;
 
-struct SceneData
+constexpr std::size_t MAX_POINT_LIGHT_NUM = 1000;
+
+struct PointLight
+{
+	XMFLOAT3 pos;
+	float _pad0;
+	XMFLOAT3 posInView;
+	float _pad1;
+	XMFLOAT3 color;
+	float range;
+};
+
+struct DirectionLight
+{
+	XMFLOAT3 dir;
+	float _pad0;
+	XMFLOAT3 color;
+	float _pad1;
+};
+
+
+//
+struct CameraData
 {
 	XMMATRIX view;
+	XMMATRIX viewInv;
 	XMMATRIX proj;
-	XMFLOAT3 lightColor;
-	float hoge;
-	XMFLOAT3 lightDir;
-	float fuga;
-	XMFLOAT3 eye;
-	float piyo;
+	XMMATRIX projInv;
+	XMMATRIX viewProj;
+	XMMATRIX viewProjInv;
+	float cameraNear;
+	float cameraFar;
+	float screenWidth;
+	float screenHeight;
+	XMFLOAT3 eyePos;
+	float _pad0;
+};
 
-	//
-	XMMATRIX lightViewProj[SHADOW_MAP_NUM];
+struct LightData
+{
+	DirectionLight directionLight;
+	std::array<XMMATRIX, SHADOW_MAP_NUM> directionLightViewProj;
+	std::array<PointLight, MAX_POINT_LIGHT_NUM> pointLight;
+	std::uint32_t pointLightNum;
+	float specPow;
+	float _pad0;
+	float _pad1;
 };
 
 struct PostEffectData
@@ -51,6 +85,10 @@ struct PostEffectData
 
 	//高輝度をメインの色に加算するまえにかける補正値
 	float luminanceDegree;
+
+	float _pad0;
+	float _pad1;
+	float _pad2;
 };
 
 constexpr std::size_t MODEL_NUM = 8;
@@ -278,7 +316,10 @@ int main()
 
 	//モデルをGBufferに書き込む際のシーンのデータを扱うリソース
 	//定数バッファのため256アライメントする必要がある
-	auto sceneDataResource = pdx12::create_commited_upload_buffer_resource(device.get(), pdx12::alignment<UINT64>(sizeof(SceneData), 256));
+	auto cameraDataResource = pdx12::create_commited_upload_buffer_resource(device.get(), pdx12::alignment<UINT64>(sizeof(CameraData), 256));
+
+	//ライトの情報を扱うリソース
+	auto lightDataResource = pdx12::create_commited_upload_buffer_resource(device.get(), pdx12::alignment<UINT64>(sizeof(LightData), 256));
 
 	//モデルをGBufferに書き込む際のモデルのデータを扱うリソース
 	//定数バッファのため256アライメントする必要がある
@@ -370,32 +411,36 @@ int main()
 	//Gbufferに書き込む時とカメラからのデプスを取得する時に使用
 	pdx12::descriptor_heap modelDescriptorHeapCBVSRVUAV{};
 	{
-		modelDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 2 + LIGHT_VIEW_PROJ_MATRIX_NUM);
+		modelDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 3 + LIGHT_VIEW_PROJ_MATRIX_NUM);
 
-		//一つ目はSceneData
-		pdx12::create_CBV(device.get(), modelDescriptorHeapCBVSRVUAV.get_CPU_handle(0), sceneDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(SceneData), 256));
-		//二つ目はModelData
-		pdx12::create_CBV(device.get(), modelDescriptorHeapCBVSRVUAV.get_CPU_handle(1), modelDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(ModelData), 256));
+		//1つ目はCcameraData
+		pdx12::create_CBV(device.get(), modelDescriptorHeapCBVSRVUAV.get_CPU_handle(0), cameraDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(CameraData), 256));
+		//2つ目はLightData
+		pdx12::create_CBV(device.get(), modelDescriptorHeapCBVSRVUAV.get_CPU_handle(1), lightDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(LightData), 256));
+		//3つ目はModelData
+		pdx12::create_CBV(device.get(), modelDescriptorHeapCBVSRVUAV.get_CPU_handle(2), modelDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(ModelData), 256));
 
-		//3つ目以降はライトプロジェクション行列
+		//4つ目以降はライトプロジェクション行列
 		for (std::size_t i = 0; i < LIGHT_VIEW_PROJ_MATRIX_NUM; i++)
-			pdx12::create_CBV(device.get(), modelDescriptorHeapCBVSRVUAV.get_CPU_handle(2 + i), lightViewProjMatrixResource[i].first.get(), pdx12::alignment<UINT64>(sizeof(XMMATRIX), 256));
+			pdx12::create_CBV(device.get(), modelDescriptorHeapCBVSRVUAV.get_CPU_handle(3 + i), lightViewProjMatrixResource[i].first.get(), pdx12::alignment<UINT64>(sizeof(XMMATRIX), 256));
 	}
 
 	//地面のモデルを書き込む用のデスクリプタヒープ
 	//Gbufferに書き込む時とカメラからのデプスっを取得する時に使用
 	pdx12::descriptor_heap groundDescriptorHeapCBVSRVUAV{};
 	{
-		groundDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 2 + LIGHT_VIEW_PROJ_MATRIX_NUM);
+		groundDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 3 + LIGHT_VIEW_PROJ_MATRIX_NUM);
 
-		//一つ目はSceneData
-		pdx12::create_CBV(device.get(), groundDescriptorHeapCBVSRVUAV.get_CPU_handle(0), sceneDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(SceneData), 256));
-		//二つ目はGroundData
-		pdx12::create_CBV(device.get(), groundDescriptorHeapCBVSRVUAV.get_CPU_handle(1), groundDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(GroundData), 256));
+		//1つ目はCameraData
+		pdx12::create_CBV(device.get(), groundDescriptorHeapCBVSRVUAV.get_CPU_handle(0), cameraDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(CameraData), 256));
+		//2つめはLightData
+		pdx12::create_CBV(device.get(), groundDescriptorHeapCBVSRVUAV.get_CPU_handle(1), lightDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(LightData), 256));
+		//3つ目はGroundData
+		pdx12::create_CBV(device.get(), groundDescriptorHeapCBVSRVUAV.get_CPU_handle(2), groundDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(GroundData), 256));
 
-		//3つ目以降はライトプロジェクション行列
+		//4つ目以降はライトプロジェクション行列
 		for (std::size_t i = 0; i < LIGHT_VIEW_PROJ_MATRIX_NUM; i++)
-			pdx12::create_CBV(device.get(), groundDescriptorHeapCBVSRVUAV.get_CPU_handle(2 + i), lightViewProjMatrixResource[i].first.get(), pdx12::alignment<UINT64>(sizeof(XMMATRIX), 256));
+			pdx12::create_CBV(device.get(), groundDescriptorHeapCBVSRVUAV.get_CPU_handle(3 + i), lightViewProjMatrixResource[i].first.get(), pdx12::alignment<UINT64>(sizeof(XMMATRIX), 256));
 	}
 
 	//GBufferに書き込む際に使用するデプスバッファのビューを作る
@@ -420,28 +465,32 @@ int main()
 	pdx12::descriptor_heap defferredRenderingDescriptorHeapCBVSRVUAV{};
 	{
 		//とりあえず4つ
-		//シーンデータ、アルベドカラー、法線、ワールド座標
-		defferredRenderingDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 4 + SHADOW_MAP_NUM);
+		//カメラのデータ、ライトのデータ、アルベドカラー、法線、ワールド座標
+		defferredRenderingDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 5 + SHADOW_MAP_NUM);
 
-		//シーンデータ
+		//CameraData
 		pdx12::create_CBV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(0), 
-			sceneDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(SceneData), 256));
+			cameraDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(CameraData), 256));
+
+		//LightData
+		pdx12::create_CBV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(1),
+			lightDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(LightData), 256));
 
 		//アルベドカラー
-		pdx12::create_texture2D_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(1), 
+		pdx12::create_texture2D_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(2), 
 			gBufferAlbedoColorResource.first.get(),G_BUFFER_ALBEDO_COLOR_FORMAT, 1, 0, 0, 0.f);
 
 		//法線
-		pdx12::create_texture2D_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(2), 
+		pdx12::create_texture2D_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(3), 
 			gBufferNormalResource.first.get(),G_BUFFER_NORMAL_FORMAT, 1, 0, 0, 0.f);
 
 		//ワールド座標
-		pdx12::create_texture2D_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(3), 
+		pdx12::create_texture2D_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(4), 
 			gBufferWorldPositionResource.first.get(),G_BUFFER_WORLD_POSITION_FORMAT, 1, 0, 0, 0.f);
 
 		//シャドウマップ
 		for (std::size_t i = 0; i < SHADOW_MAP_NUM; i++)
-			pdx12::create_texture2D_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(4 + i),
+			pdx12::create_texture2D_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(5 + i),
 				shadowMapResource[i].first.get(), SHADOW_MAP_SRV_FORMAT, 1, 0, 0, 0.f);
 
 	}
@@ -523,34 +572,38 @@ int main()
 	//ポストえっふぇくとにに利用するSRVなどを作成する用のデスクリプタヒープ
 	pdx12::descriptor_heap postEffectDescriptorHeapCBVSRVUAV{};
 	{
-		//1つ目はシーンデータ、2つ目はポストエフェクトのデータ、3つ目は通常のカラー、4つ目から縮小された高輝度のリソース
+		//1つ目はCameraData、2つ目はLightData、3つ目はポストエフェクトのデータ、4つ目は通常のカラー、5つ目から縮小された高輝度のリソース
 		//12つ目からは縮小されたメインカラーのリソース、20つ目はデプスバッファ
-		postEffectDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1 + 1 + 1 + SHRINKED_HIGH_LUMINANCE_NUM + SHRINKED_MAIN_COLOR_RESOURCE_NUM + 1);
+		postEffectDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 4 + SHRINKED_HIGH_LUMINANCE_NUM + SHRINKED_MAIN_COLOR_RESOURCE_NUM + 1);
 
-		//シーンデータ
+		//CameraData
 		pdx12::create_CBV(device.get(), postEffectDescriptorHeapCBVSRVUAV.get_CPU_handle(0),
-			sceneDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(SceneData), 256));
+			cameraDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(CameraData), 256));
+
+		//LightData
+		pdx12::create_CBV(device.get(), postEffectDescriptorHeapCBVSRVUAV.get_CPU_handle(1),
+			lightDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(LightData), 256));
 
 		//ポストエフェクトのデータ
-		pdx12::create_CBV(device.get(), postEffectDescriptorHeapCBVSRVUAV.get_CPU_handle(1),
+		pdx12::create_CBV(device.get(), postEffectDescriptorHeapCBVSRVUAV.get_CPU_handle(2),
 			postEffectDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(PostEffectData), 256));
 
 		//メインの色
-		pdx12::create_texture2D_SRV(device.get(), postEffectDescriptorHeapCBVSRVUAV.get_CPU_handle(1 + 1),
+		pdx12::create_texture2D_SRV(device.get(), postEffectDescriptorHeapCBVSRVUAV.get_CPU_handle(3),
 			mainColorResource.first.get(), MAIN_COLOR_RESOURCE_FORMAT, 1, 0, 0, 0.f);
 
 		//縮小された高輝度
 		for (std::size_t i = 0; i < SHRINKED_HIGH_LUMINANCE_NUM; i++)
-			pdx12::create_texture2D_SRV(device.get(), postEffectDescriptorHeapCBVSRVUAV.get_CPU_handle(1 + 1 + 1 + i),
+			pdx12::create_texture2D_SRV(device.get(), postEffectDescriptorHeapCBVSRVUAV.get_CPU_handle(4 + i),
 				shrinkedHighLuminanceResource[i].first.get(), SHRINKED_HIGH_LUMINANCE_FORMAT, 1, 0, 0, 0.f);
 
 		//縮小されたメインカラー
 		for (std::size_t i = 0; i < SHRINKED_MAIN_COLOR_RESOURCE_NUM; i++)
-			pdx12::create_texture2D_SRV(device.get(), postEffectDescriptorHeapCBVSRVUAV.get_CPU_handle(1 + 1 + 1 + SHRINKED_HIGH_LUMINANCE_NUM + i),
+			pdx12::create_texture2D_SRV(device.get(), postEffectDescriptorHeapCBVSRVUAV.get_CPU_handle(4 + SHRINKED_HIGH_LUMINANCE_NUM + i),
 				shrinkedMainColorResource[i].first.get(), SHRINKED_MAIN_COLOR_RESOURCE_FORMAT, 1, 0, 0, 0.f);
 
 		//デプスバッファ
-		pdx12::create_texture2D_SRV(device.get(), postEffectDescriptorHeapCBVSRVUAV.get_CPU_handle(1 + 1 + 1 + SHRINKED_HIGH_LUMINANCE_NUM + SHRINKED_MAIN_COLOR_RESOURCE_NUM),
+		pdx12::create_texture2D_SRV(device.get(), postEffectDescriptorHeapCBVSRVUAV.get_CPU_handle(4 + SHRINKED_HIGH_LUMINANCE_NUM + SHRINKED_MAIN_COLOR_RESOURCE_NUM),
 			depthBuffer.first.get(), DEPTH_BUFFER_SRV_FORMAT, 1, 0, 0, 0.f);
 	}
 
@@ -591,7 +644,7 @@ int main()
 
 	//モデルを描写する用のルートシグネチャ
 	auto modelRootSignature = pdx12::create_root_signature(device.get(),
-		{ {{/*シーンデータ*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*モデルデータ*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV}} ,{{/*ライトのビュープロジェクション行列*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV}} }, {});
+		{ {{/*CameraData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*LightData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*モデルデータ*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV}} ,{{/*ライトのビュープロジェクション行列*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV}} }, {});
 
 	//モデルを描写する用のグラフィックパイプライン
 	auto modelGBufferGraphicsPipelineState = pdx12::create_graphics_pipeline(device.get(), modelRootSignature.get(),
@@ -607,7 +660,7 @@ int main()
 
 	//地面を描写する用のルートシグネチャ
 	auto groundRootSignature = pdx12::create_root_signature(device.get(),
-		{ {{/*シーンデータ*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*グランドのデータ*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV}},{{/*ライトのビュープロジェクション行列*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV}} }, {});
+		{ {{/*CameraData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*LightData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*グランドのデータ*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV}},{{/*ライトのビュープロジェクション行列*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV}} }, {});
 
 	//地面を描写する用のグラフィックパイプライン
 	auto groundGBufferGraphicsPipelineState = pdx12::create_graphics_pipeline(device.get(), groundRootSignature.get(),
@@ -622,7 +675,7 @@ int main()
 
 
 	auto deferredRenderingRootSignature = pdx12::create_root_signature(device.get(),
-		{ {{/*シーンデータ*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*GBuffer アルベドカラー、法線、ワールド座標の順*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,3},{/*シャドウマップ*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,SHADOW_MAP_NUM}} },
+		{ {{/*CameraData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*LightData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*GBuffer アルベドカラー、法線、ワールド座標の順*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,3},{/*シャドウマップ*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,SHADOW_MAP_NUM}} },
 		{ { D3D12_FILTER_MIN_MAG_MIP_LINEAR ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP,D3D12_COMPARISON_FUNC_NEVER} });
 
 	auto deferredRenderringGraphicsPipelineState = pdx12::create_graphics_pipeline(device.get(), deferredRenderingRootSignature.get(),
@@ -652,7 +705,7 @@ int main()
 
 
 	auto postEffectRootSignature = pdx12::create_root_signature(device.get(),
-		{ {{/*シーンデータ*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*ポストエフェクトのデータ*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV}, {/*メインのカラーのテクスチャ*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV},
+		{ {{/*CameraData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*LightData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*ポストエフェクトのデータ*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV}, {/*メインのカラーのテクスチャ*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV},
 		{/*縮小された高輝度のリソース*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,SHRINKED_HIGH_LUMINANCE_NUM},{/*縮小されたメインカラーののリソース*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,SHRINKED_MAIN_COLOR_RESOURCE_NUM},
 		{/*デプスバッファ*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV}}},
 		{ {D3D12_FILTER_MIN_MAG_MIP_LINEAR ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP,D3D12_COMPARISON_FUNC_NEVER} });
@@ -672,7 +725,7 @@ int main()
 	D3D12_RECT scissorRect{ 0,0,static_cast<LONG>(WINDOW_WIDTH),static_cast<LONG>(WINDOW_HEIGHT) };
 
 	XMFLOAT3 eye{ 0.f,5.f,5.f };
-	XMFLOAT3 target{ -10,0,0 };
+	XMFLOAT3 target{ 0,0,0 };
 	XMFLOAT3 up{ 0,1,0 };
 	float asspect = static_cast<float>(WINDOW_WIDTH) / static_cast<float>(WINDOW_HEIGHT);
 	auto view = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
@@ -698,15 +751,29 @@ int main()
 
 	XMMATRIX lightViewProj = XMMatrixLookAtLH(lightPosVector, XMLoadFloat3(&target), XMLoadFloat3(&up)) * XMMatrixOrthographicLH(1024, 1024, -100.f, 200.f);
 
-	SceneData sceneData{
-		view,
-		proj,
-		lightColor,
-		0.f,
-		lightDir,
-		0.f,
-		eye,
-	};
+	CameraData cameraData{};
+	cameraData.view = view;
+	XMMatrixInverse(cameraData.viewInv.r, cameraData.view);
+	cameraData.proj = proj;
+	XMMatrixInverse(cameraData.proj.r, cameraData.proj);
+	cameraData.viewProj = view * proj;
+	XMMatrixInverse(cameraData.viewProjInv.r, cameraData.viewProj);
+	cameraData.cameraNear = CAMERA_NEAR_Z;
+	cameraData.cameraFar = CAMERA_FAR_Z;
+	cameraData.screenWidth = WINDOW_WIDTH;
+	cameraData.screenHeight = WINDOW_HEIGHT;
+	cameraData.eyePos = eye;
+
+	LightData lightData{};
+	lightData.directionLight.dir = lightDir;
+	lightData.directionLight.color = lightColor;
+
+	//
+	//ポイントライトの設定をここでする
+	//
+
+	lightData.specPow = 10.f;
+
 
 	PostEffectData posEffectData{
 		{0.5f,0.5f},
@@ -723,8 +790,11 @@ int main()
 	GroundData groundData{};
 	groundData.world = XMMatrixScaling(500.f, 500.f, 500.f) * XMMatrixRotationX(XM_PIDIV2) * XMMatrixTranslation(0.f, 50.f, 0.f);
 
-	SceneData* mappedSceneDataPtr = nullptr;
-	sceneDataResource.first->Map(0, nullptr, reinterpret_cast<void**>(&mappedSceneDataPtr));
+	CameraData* mappedCameraDataPtr = nullptr;
+	cameraDataResource.first->Map(0, nullptr, reinterpret_cast<void**>(&mappedCameraDataPtr));
+
+	LightData* mappedLightDataPtr = nullptr;
+	lightDataResource.first->Map(0, nullptr, reinterpret_cast<void**>(&mappedLightDataPtr));
 
 	ModelData* mappedModelDataPtr = nullptr;
 	modelDataResource.first->Map(0, nullptr, reinterpret_cast<void**>(&mappedModelDataPtr));
@@ -754,7 +824,7 @@ int main()
 		pdx12::get_clop_matrix(vertex, clop);
 		*mappedLightViewProj = lightViewProj * clop;
 
-		sceneData.lightViewProj[i] = lightViewProj * clop;
+		lightData.directionLightViewProj[i] = lightViewProj * clop;
 
 		for (std::size_t j = 0; j < vertex.size(); j++)
 			pdx12::apply(vertex[j], clop);
@@ -792,15 +862,19 @@ int main()
 		XMFLOAT3 lightPos{};
 		XMStoreFloat3(&lightPos, lightPosVector);
 		lightViewProj = XMMatrixLookAtLH(lightPosVector, XMLoadFloat3(&target), XMLoadFloat3(&up)) * XMMatrixOrthographicLH(100, 100, -100.f, 200.f);
-		sceneData = {
-		view,
-		proj,
-		lightColor,
-		0.f,
-		lightDir,
-		0.f,
-		eye,
-		};
+		
+		cameraData.view = view;
+		XMMatrixInverse(cameraData.viewInv.r, cameraData.view);
+		cameraData.proj = proj;
+		XMMatrixInverse(cameraData.proj.r, cameraData.proj);
+		cameraData.viewProj = view * proj;
+		XMMatrixInverse(cameraData.viewProjInv.r, cameraData.viewProj);
+		cameraData.cameraNear = CAMERA_NEAR_Z;
+		cameraData.cameraFar = CAMERA_FAR_Z;
+		cameraData.screenWidth = WINDOW_WIDTH;
+		cameraData.screenHeight = WINDOW_HEIGHT;
+		cameraData.eyePos = eye;
+
 		auto inv = XMMatrixInverse(nullptr, view * proj);
 		XMFLOAT3 right{ inv.r[0].m128_f32[0],inv.r[0].m128_f32[1] ,inv.r[0].m128_f32[2] };
 
@@ -815,13 +889,14 @@ int main()
 				pdx12::apply(vertex[j], lightViewProj);
 			XMMATRIX clop{};
 			pdx12::get_clop_matrix(vertex, clop);
-			*mappedLightViewProj = lightViewProj * clop;
 
-			sceneData.lightViewProj[i] = lightViewProj * clop;
+			*mappedLightViewProj = lightViewProj * clop;
+			lightData.directionLightViewProj[i] = lightViewProj * clop;
 		}
 		
 		
-		*mappedSceneDataPtr = sceneData;
+		*mappedCameraDataPtr = cameraData;
+		*mappedLightDataPtr = lightData;
 
 		//
 		//コマンドリストの初期化など
@@ -935,7 +1010,7 @@ int main()
 				commandManager.get_list()->SetDescriptorHeaps(1, &ptr);
 			}
 			commandManager.get_list()->SetGraphicsRootDescriptorTable(0, modelDescriptorHeapCBVSRVUAV.get_GPU_handle(0));
-			commandManager.get_list()->SetGraphicsRootDescriptorTable(1, modelDescriptorHeapCBVSRVUAV.get_GPU_handle(2 + i));
+			commandManager.get_list()->SetGraphicsRootDescriptorTable(1, modelDescriptorHeapCBVSRVUAV.get_GPU_handle(3 + i));
 
 			commandManager.get_list()->SetPipelineState(modelShdowGraphicsPipelineState.get());
 			commandManager.get_list()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -952,7 +1027,7 @@ int main()
 				commandManager.get_list()->SetDescriptorHeaps(1, &ptr);
 			}
 			commandManager.get_list()->SetGraphicsRootDescriptorTable(0, groundDescriptorHeapCBVSRVUAV.get_GPU_handle(0));
-			commandManager.get_list()->SetGraphicsRootDescriptorTable(1, groundDescriptorHeapCBVSRVUAV.get_GPU_handle(2 + i));
+			commandManager.get_list()->SetGraphicsRootDescriptorTable(1, groundDescriptorHeapCBVSRVUAV.get_GPU_handle(3 + i));
 
 			commandManager.get_list()->SetPipelineState(groundShadowGraphicsPipelineState.get());
 			commandManager.get_list()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
@@ -960,8 +1035,6 @@ int main()
 			commandManager.get_list()->IASetVertexBuffers(0, 1, &peraPolygonVertexBufferView);
 
 			commandManager.get_list()->DrawInstanced(peraPolygonVertexNum, 1, 0, 0);
-			
-			//
 			
 			pdx12::resource_barrior(commandManager.get_list(), shadowMapResource[i], D3D12_RESOURCE_STATE_COMMON);
 		}
