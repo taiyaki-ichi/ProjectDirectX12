@@ -25,7 +25,7 @@ using namespace DirectX;
 //TODO: 置く場所
 constexpr std::size_t SHADOW_MAP_NUM = 3;
 
-constexpr std::size_t MAX_POINT_LIGHT_NUM = 50;
+constexpr std::size_t MAX_POINT_LIGHT_NUM = 1000;
 
 struct PointLight
 {
@@ -184,7 +184,7 @@ int main()
 
 	constexpr std::size_t LIGHT_CULLING_TILE_WIDTH = 16;
 	constexpr std::size_t LIGHT_CULLING_TILE_HEIGHT = 16;
-	constexpr std::size_t LIGHT_CULLING_TILE_NUM = LIGHT_CULLING_TILE_WIDTH * LIGHT_CULLING_TILE_HEIGHT;
+	constexpr std::size_t LIGHT_CULLING_TILE_NUM = (WINDOW_WIDTH / LIGHT_CULLING_TILE_WIDTH) * (WINDOW_HEIGHT / LIGHT_CULLING_TILE_HEIGHT);
 
 	//
 	//基本的な部分の作成
@@ -393,8 +393,7 @@ int main()
 	}
 
 	//ポイントライトのインデックスを格納するリソース
-	auto pointLightIndexResource = pdx12::create_commited_texture_resource(device.get(), POINT_LIGHT_INDEX_RESOURCE_FORMAT, MAX_POINT_LIGHT_NUM * LIGHT_CULLING_TILE_NUM,
-		1, 1, 1, 1, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, nullptr);
+	auto pointLightIndexResource = pdx12::create_commited_buffer_resource(device.get(), sizeof(int) * MAX_POINT_LIGHT_NUM * LIGHT_CULLING_TILE_NUM, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 
 	//
 	//デスクリプタヒープの作成
@@ -636,8 +635,9 @@ int main()
 			depthBuffer.first.get(), DEPTH_BUFFER_SRV_FORMAT, 1, 0, 0, 0.f);
 
 		//PointLightIndex
-		pdx12::create_texture1D_UAV(device.get(), lightCullingDescriptorHeapCBVSRVUAV.get_CPU_handle(3),
-			pointLightIndexResource.first.get(), POINT_LIGHT_INDEX_RESOURCE_FORMAT, nullptr, 0);
+		pdx12::create_buffer_UAV(device.get(), lightCullingDescriptorHeapCBVSRVUAV.get_CPU_handle(3),
+			pointLightIndexResource.first.get(), nullptr,
+			MAX_POINT_LIGHT_NUM* LIGHT_CULLING_TILE_NUM, sizeof(int), 0, 0, D3D12_BUFFER_UAV_FLAG_NONE);
 	}
 
 

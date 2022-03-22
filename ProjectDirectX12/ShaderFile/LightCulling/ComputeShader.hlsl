@@ -25,7 +25,7 @@ Texture2D<float4> depthBuffer : register(t0);
 
 //出力
 //影響を受けるライトの添え字が格納される
-RWTexture1D<uint> lightIndexTexture : register(u0);
+RWStructuredBuffer<uint> lightIndexTexture : register(u0);
 
 //共有メモリ
 //タイルの最小深度

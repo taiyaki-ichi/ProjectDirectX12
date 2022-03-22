@@ -91,6 +91,22 @@ namespace pdx12
 		device->CreateUnorderedAccessView(resource, counterResource, &desc, cpuHandle);
 	}
 
+	inline void create_buffer_UAV(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle, ID3D12Resource* resource, 
+		ID3D12Resource* counterResource,UINT numElements,UINT structureByteStride,UINT firstElement,UINT counterOffsetInBytes,D3D12_BUFFER_UAV_FLAGS flags)
+	{
+		D3D12_UNORDERED_ACCESS_VIEW_DESC desc{};
+		//unknownŒÅ’è‚Á‚Û‚¢
+		desc.Format = DXGI_FORMAT_UNKNOWN;
+		desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+		desc.Buffer.NumElements = numElements;
+		desc.Buffer.StructureByteStride = structureByteStride;
+		desc.Buffer.FirstElement = firstElement;
+		desc.Buffer.CounterOffsetInBytes = counterOffsetInBytes;
+		desc.Buffer.Flags = flags;
+
+		device->CreateUnorderedAccessView(resource, counterResource, &desc, cpuHandle);
+	}
+
 
 	inline void create_texture2D_array_UAV(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle, ID3D12Resource* resource,DXGI_FORMAT format, 
 		ID3D12Resource* counterResource, UINT arraySize, UINT firstArraySlice, UINT mipSlice, UINT planeSlice)
