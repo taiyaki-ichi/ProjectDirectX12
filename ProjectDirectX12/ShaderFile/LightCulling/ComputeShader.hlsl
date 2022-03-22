@@ -1,14 +1,6 @@
 #include"../CameraData.hlsli"
 #include"../LightData.hlsli"
 
-//スレッドの数
-//タイルの大きさと同じ
-#define TILE_WIDTH 16
-#define TILE_HEIGHT 16
-
-//タイルの総数
-#define TILE_NUM (TILE_WIDTH*TILE_HEIGHT)
-
 
 cbuffer CameraData : register(b0)
 {
@@ -25,7 +17,7 @@ Texture2D<float4> depthBuffer : register(t0);
 
 //出力
 //影響を受けるライトの添え字が格納される
-RWStructuredBuffer<uint> lightIndexTexture : register(u0);
+RWStructuredBuffer<uint> pointLightIndexBuffer : register(u0);
 
 //共有メモリ
 //タイルの最小深度
@@ -136,9 +128,10 @@ void main(uint3 groupID : SV_GroupID, uint3 dispatchThreadID : SV_DispatchThread
 		{
 			float4 lp = float4(pointLight.posInView, 1.f);
 			float d = dot(frustumPlanes[i], lp);
-			isHit = isHit && (d < pointLight.range);
+			isHit = isHit && (d >= -pointLight.range);
 		}
-
+		//
+		isHit = true;
 		//タイルと接触している場合
 		if (isHit)
 		{
@@ -156,16 +149,16 @@ void main(uint3 groupID : SV_GroupID, uint3 dispatchThreadID : SV_DispatchThread
 
 	//結果を格納する
 	uint numCellX = (cameraData.screenWidth + TILE_WIDTH - 1) / TILE_WIDTH;
-	uint tileIndex = floor(frameUV.x / TILE_WIDTH) + floor(frameUV.y / TILE_WIDTH) * numCellX;
+	uint tileIndex = floor(frameUV.x / TILE_WIDTH) + floor(frameUV.y / TILE_HEIGHT) * numCellX;
 	uint lightStart = lightData.pointLightNum * tileIndex;
 	for (uint lightIndex = groupIndex; lightIndex < tileLightNum; lightIndex += TILE_NUM)
 	{
-		lightIndexTexture[lightStart + lightIndex] = tileLightIndex[lightIndex];
+		pointLightIndexBuffer[lightStart + lightIndex] = tileLightIndex[lightIndex];
 	}
 
 	if (groupIndex == 0 && tileLightNum < lightData.pointLightNum)
 	{
 		//番兵
-		lightIndexTexture[lightStart + tileLightNum] = 0xffffffff;
+		pointLightIndexBuffer[lightStart + tileLightNum] = 0xffffffff;
 	}
 }

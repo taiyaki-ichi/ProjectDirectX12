@@ -17,6 +17,8 @@ Texture2D<float4> worldPositionTexture: register(t2);
 
 Texture2D<float4> shadowMap[SHADOW_MAP_NUM] : register(t3);
 
+StructuredBuffer<uint> pointLightIndexBuffer : register(t6);
+
 SamplerState smp: register(s0);
 
 struct VSOutput

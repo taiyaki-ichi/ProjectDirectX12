@@ -1,4 +1,12 @@
 
+//ポイントラインとのライトカリングの際のスレッドの数
+//タイルの大きさと同じ
+#define TILE_WIDTH 16
+#define TILE_HEIGHT 16
+
+//タイルの総数
+#define TILE_NUM (TILE_WIDTH*TILE_HEIGHT)
+
 static const int SHADOW_MAP_NUM = 3;
 static const int MAX_POINT_LIGHT_NUM = 1000;
 

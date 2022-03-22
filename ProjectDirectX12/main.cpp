@@ -179,9 +179,6 @@ int main()
 	//シャドウマップと同じ数
 	constexpr std::size_t LIGHT_VIEW_PROJ_MATRIX_NUM = SHADOW_MAP_NUM;
 
-	//ポイントライトのインデックスを格納するリソースのフォーマット
-	constexpr DXGI_FORMAT POINT_LIGHT_INDEX_RESOURCE_FORMAT = DXGI_FORMAT_R32_UINT;
-
 	constexpr std::size_t LIGHT_CULLING_TILE_WIDTH = 16;
 	constexpr std::size_t LIGHT_CULLING_TILE_HEIGHT = 16;
 	constexpr std::size_t LIGHT_CULLING_TILE_NUM = (WINDOW_WIDTH / LIGHT_CULLING_TILE_WIDTH) * (WINDOW_HEIGHT / LIGHT_CULLING_TILE_HEIGHT);
@@ -473,9 +470,8 @@ int main()
 	//ディファードレンダリングを行う際に利用するSRVなどを作成する用のデスクリプタヒープ
 	pdx12::descriptor_heap defferredRenderingDescriptorHeapCBVSRVUAV{};
 	{
-		//とりあえず4つ
-		//カメラのデータ、ライトのデータ、アルベドカラー、法線、ワールド座標
-		defferredRenderingDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 5 + SHADOW_MAP_NUM);
+		//カメラのデータ、ライトのデータ、アルベドカラー、法線、ワールド座標、シャドウマップ、ポイントライトインデックス
+		defferredRenderingDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 5 + SHADOW_MAP_NUM + 1);
 
 		//CameraData
 		pdx12::create_CBV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(0), 
@@ -501,6 +497,11 @@ int main()
 		for (std::size_t i = 0; i < SHADOW_MAP_NUM; i++)
 			pdx12::create_texture2D_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(5 + i),
 				shadowMapResource[i].first.get(), SHADOW_MAP_SRV_FORMAT, 1, 0, 0, 0.f);
+
+		//ポイントライトインデックス
+		//FormatはUnknownじゃあないとダメだって
+		pdx12::create_buffer_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(5 + SHADOW_MAP_NUM),
+			pointLightIndexResource.first.get(), MAX_POINT_LIGHT_NUM* LIGHT_CULLING_TILE_NUM, sizeof(int), 0, D3D12_BUFFER_SRV_FLAG_NONE);
 
 	}
 
@@ -711,7 +712,8 @@ int main()
 
 
 	auto deferredRenderingRootSignature = pdx12::create_root_signature(device.get(),
-		{ {{/*CameraData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*LightData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*GBuffer アルベドカラー、法線、ワールド座標の順*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,3},{/*シャドウマップ*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,SHADOW_MAP_NUM}} },
+		{ {{/*CameraData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*LightData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*GBuffer アルベドカラー、法線、ワールド座標の順*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,3},
+		{/*シャドウマップ*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,SHADOW_MAP_NUM},{/*ポイントライトのインデックスのリスト*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV}}},
 		{ { D3D12_FILTER_MIN_MAG_MIP_LINEAR ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP,D3D12_COMPARISON_FUNC_NEVER} });
 
 	auto deferredRenderringGraphicsPipelineState = pdx12::create_graphics_pipeline(device.get(), deferredRenderingRootSignature.get(),
@@ -776,8 +778,8 @@ int main()
 		CAMERA_NEAR_Z,
 		CAMERA_FAR_Z
 	);
-	XMFLOAT3 lightColor{ 1.f,1.f,1.f };
-	XMFLOAT3 lightDir{ -1.f,3.f,-1.f };
+	XMFLOAT3 lightColor{ 0.4f,0.4f,0.4f };
+	XMFLOAT3 lightDir{ 0.f,-0.5f,-0.5f };
 
 	auto inv = XMMatrixInverse(nullptr, view * proj);
 	XMFLOAT3 right{ inv.r[0].m128_f32[0],inv.r[0].m128_f32[1] ,inv.r[0].m128_f32[2] };
@@ -785,7 +787,7 @@ int main()
 	XMFLOAT3 cameraForward = { target.x - eye.x,target.y - eye.y, target.z - eye.z };
 
 	//posは原点でいいっぽい
-	auto lightPosVector = XMLoadFloat3(&target) + XMVector3Normalize(XMLoadFloat3(&lightDir))
+	auto lightPosVector = XMLoadFloat3(&target) - XMVector3Normalize(XMLoadFloat3(&lightDir))
 		* XMVector3Length(XMVectorSubtract(XMLoadFloat3(&target), XMLoadFloat3(&eye))).m128_f32[0];
 	XMFLOAT3 lightPos{ 0,0,0 };
 	XMStoreFloat3(&lightPos, lightPosVector);
@@ -809,9 +811,25 @@ int main()
 	lightData.directionLight.dir = lightDir;
 	lightData.directionLight.color = lightColor;
 
-	//
-	//ポイントライトの設定をここでする
-	//
+	lightData.pointLight[0].color = { 0.5f,0.f,0.f };
+	lightData.pointLight[0].pos = { -10.f,1.f,0.f };
+	lightData.pointLight[0].posInView = lightData.pointLight[0].pos;
+	pdx12::apply(lightData.pointLight[0].posInView, view);
+	lightData.pointLight[0].range = 10.f;
+
+	lightData.pointLight[1].color = { 0.f,0.5f,0.f };
+	lightData.pointLight[1].pos = { -10.f,1.f,-10.f };
+	lightData.pointLight[1].posInView = lightData.pointLight[1].pos;
+	pdx12::apply(lightData.pointLight[1].posInView, view);
+	lightData.pointLight[1].range = 10.f;
+
+	lightData.pointLight[2].color = { 0.f,0.f,0.5f };
+	lightData.pointLight[2].pos = { 0.f,1.f,-10.f };
+	lightData.pointLight[2].posInView = lightData.pointLight[2].pos;
+	pdx12::apply(lightData.pointLight[2].posInView, view);
+	lightData.pointLight[2].range = 10.f;
+
+	lightData.pointLightNum = 3;
 
 	lightData.specPow = 10.f;
 
@@ -826,7 +844,7 @@ int main()
 	ModelData modelData{};
 	std::fill(std::begin(modelData.world), std::end(modelData.world), XMMatrixScaling(10.f, 10.f, 10.f));
 	for (std::size_t i = 0; i < MODEL_NUM; i++)
-		modelData.world[i] *= XMMatrixTranslation(0.f, 0.f, -4.f * i + 2.f);
+		modelData.world[i] *= XMMatrixTranslation(0.f, 0.f, 4.f * i - 2.f);
 
 	GroundData groundData{};
 	groundData.world = XMMatrixScaling(500.f, 500.f, 500.f) * XMMatrixRotationX(XM_PIDIV2) * XMMatrixTranslation(0.f, 50.f, 0.f);
@@ -884,12 +902,12 @@ int main()
 		//
 
 		for (std::size_t i = 0; i < MODEL_NUM; i++)
-			modelData.world[i] *= XMMatrixTranslation(0.f, 0.f, 4.f * i - 2.f) * XMMatrixRotationY(0.01f) * XMMatrixTranslation(0.f, 0.f, -4.f * i + 2.f);
+			modelData.world[i] *= XMMatrixTranslation(0.f, 0.f, -4.f * i + 2.f) * XMMatrixRotationY(0.01f) * XMMatrixTranslation(0.f, 0.f, 4.f * i - 2.f);
 		*mappedModelDataPtr = modelData;
 
 		
 		cnt++;
-		eye = { 5.f * std::sin(cnt * 0.01f),5.f,5.f * std::cos(cnt * 0.01f) };
+		eye = { 3.f * std::sin(cnt * 0.01f),3.f,3.f * std::cos(cnt * 0.01f) };
 		view = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
 		proj = DirectX::XMMatrixPerspectiveFovLH(
 			VIEW_ANGLE,
@@ -898,7 +916,7 @@ int main()
 			CAMERA_FAR_Z
 		);
 		cameraForward = { target.x - eye.x,target.y - eye.y, target.z - eye.z };
-		lightPosVector = XMLoadFloat3(&target) + XMVector3Normalize(XMLoadFloat3(&lightDir))
+		lightPosVector = XMLoadFloat3(&target) - XMVector3Normalize(XMLoadFloat3(&lightDir))
 			* XMVector3Length(XMVectorSubtract(XMLoadFloat3(&target), XMLoadFloat3(&eye))).m128_f32[0];
 		XMFLOAT3 lightPos{};
 		XMStoreFloat3(&lightPos, lightPosVector);
@@ -935,6 +953,12 @@ int main()
 			lightData.directionLightViewProj[i] = lightViewProj * clop;
 		}
 		
+		lightData.pointLight[0].posInView = lightData.pointLight[0].pos;
+		pdx12::apply(lightData.pointLight[0].posInView, view);
+		lightData.pointLight[1].posInView = lightData.pointLight[1].pos;
+		pdx12::apply(lightData.pointLight[1].posInView, view);
+		lightData.pointLight[2].posInView = lightData.pointLight[2].pos;
+		pdx12::apply(lightData.pointLight[2].posInView, view);
 		
 		*mappedCameraDataPtr = cameraData;
 		*mappedLightDataPtr = lightData;
@@ -1092,7 +1116,7 @@ int main()
 		}
 		commandManager.get_list()->SetComputeRootDescriptorTable(0, lightCullingDescriptorHeapCBVSRVUAV.get_GPU_handle(0));
 		commandManager.get_list()->SetPipelineState(lightCullingComputePipelineState.get());
-		commandManager.get_list()->Dispatch(LIGHT_CULLING_TILE_WIDTH, LIGHT_CULLING_TILE_HEIGHT, 1);
+		commandManager.get_list()->Dispatch(WINDOW_WIDTH / LIGHT_CULLING_TILE_WIDTH, WINDOW_HEIGHT / LIGHT_CULLING_TILE_HEIGHT, 1);
 		pdx12::resource_barrior(commandManager.get_list(), pointLightIndexResource, D3D12_RESOURCE_STATE_COMMON);
 
 

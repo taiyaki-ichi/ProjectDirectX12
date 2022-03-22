@@ -1,27 +1,84 @@
 #include"Header.hlsli"
 
+float3 CalcDiffuse(float3 lightDir, float3 lightColor, float3 normal)
+{
+	float t = saturate(dot(normal, -lightDir));
+	return lightColor * t;
+}
+
+float3 CalcSpecular(float3 lightDir, float3 lightColor, float3 normal, float3 toEye)
+{
+	float3 r = reflect(lightDir, normal);
+	float t = pow(saturate(dot(r, toEye)), lightData.specPow);
+	return lightColor * t;
+}
+
+float3 CalcDirectionLight(float3 normal, float3 toEye)
+{
+	float3 result = float3(0.f, 0.f, 0.f);
+	result += CalcDiffuse(normalize(lightData.directionLight.dir), lightData.directionLight.color, normal);
+	result += CalcSpecular(normalize(lightData.directionLight.dir), lightData.directionLight.color, normal, toEye);
+	return result;
+}
+
+float3 CalcPointLight(float2 uv,float3 worldPos,float3 normal,float3 toEye)
+{
+	//スクリーンをタイルで分割した時のセルのX座標
+	uint numCellX = (cameraData.screenWidth + TILE_WIDTH - 1) / TILE_WIDTH;
+
+	//タイルのインデックス
+	//uint tileLindex = floor(uv.x / TILE_WIDTH) + floor(uv.y / TILE_HEIGHT) * numCellX;
+	//じゃね
+	uint tileIndex = floor(uv.x / TILE_WIDTH) + floor(uv.y / TILE_WIDTH) * numCellX;
+
+	//このピクセルが含まれるタイルのライトインデックスのリストの開始位置
+	uint indexStart = tileIndex * lightData.pointLightNum;
+
+	//このピクセルが含まれるライトインデックスのリストの終了位置
+	uint indexEnd = indexStart + lightData.pointLightNum;
+
+	float3 result = float3(0.f, 0.f, 0.f);
+	//for (uint i = indexStart; i < indexEnd; i++)
+	for (uint i = 0; i < lightData.pointLightNum; i++)
+	{
+		//uint pointLightIndex = pointLightIndexBuffer[i];
+		uint pointLightIndex = i;
+		if (pointLightIndex == 0xffffffff)
+		{
+			break;
+		}
+
+		float3 lightDir = normalize(worldPos.xyz - lightData.pointLight[pointLightIndex].pos.xyz);
+		float distance = length(worldPos.xyz - lightData.pointLight[pointLightIndex].pos.xyz);
+
+		//影響率
+		float affect = 1.f - min(1.f, distance / lightData.pointLight[pointLightIndex].range);
+		//float affect = (distance < lightData.pointLight[pointLightIndex].range) ? 1.f : 0.f;
+
+		result += CalcDiffuse(lightDir, lightData.pointLight[pointLightIndex].color, normal) * affect;
+		result += CalcSpecular(lightDir, lightData.pointLight[pointLightIndex].color, normal, toEye) * affect;
+	}
+
+	return result;
+}
+
+
 PSOutput main(VSOutput input)
 {
 	PSOutput output;
 
 	float4 albedoColor = albedoColorTexture.Sample(smp,input.uv);
-	float3 normal = normalTexture.Sample(smp, input.uv);
+	float3 normal = normalTexture.Sample(smp, input.uv).xyz;
+	//-1,1の範囲に収める
+	normal = (normal * 2.f) - 1.f;
 	float4 worldPosition = float4(worldPositionTexture.Sample(smp, input.uv).xyz, 1.f);
+	float3 toEye = normalize(cameraData.eyePos.xyz - worldPosition.xyz);
 
+	float3 ambient = (albedoColor * 0.6f).xyz;
+	float3 directionLightColor = CalcDirectionLight(normal, toEye);
+	float3 pointLightColor = float3(0.f, 0.f, 0.f);// CalcPointLight(input.pos.xy, worldPosition.xyz, normal, toEye);
 
-	//法線を0,1の範囲から-1,1の範囲に収める
-	normal = mul(cameraData.view,(normal * 2.f) - 1.f);
-
-	float3 diffuse = lightData.directionLight.color * 0.45 * saturate(dot(normal.xyz, normalize(mul(cameraData.view, lightData.directionLight.dir))));
-	float3 ambient = albedoColor * 0.5f;
-
-	//光が反射する方向
-	float3 refLight = normalize(reflect(lightData.directionLight.dir, mul(cameraData.view, normal.xyz)));
-	//目線の方向
-	float3 ray = normalize(cameraData.eyePos - worldPosition);
-	float3 specular = lightData.directionLight.color * 0.4f * pow(saturate(dot(refLight, ray)), lightData.specPow);
-
-	output.color = float4(ambient + diffuse + specular, 1);
+	output.color = float4(ambient + directionLightColor + pointLightColor, 1.f);
 
 	float4 lightPos[SHADOW_MAP_NUM];
 	for (int i = 0; i < SHADOW_MAP_NUM; i++)

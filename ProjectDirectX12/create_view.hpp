@@ -67,6 +67,21 @@ namespace pdx12
 		device->CreateShaderResourceView(resource, &desc, cpuHandle);
 	}
 
+	inline void create_buffer_SRV(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle, ID3D12Resource* resource,
+		UINT numElements, UINT structureByteStride, UINT firstElement, D3D12_BUFFER_SRV_FLAGS flags)
+	{
+		D3D12_SHADER_RESOURCE_VIEW_DESC desc{};
+		//ViewDimensio‚ªBuffer‚Ìê‡‚ÍFormat‚ÍUnknownŒÅ’è‚Á‚Û‚¢
+		desc.Format = DXGI_FORMAT_UNKNOWN;
+		desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+		desc.Buffer.NumElements = numElements;
+		desc.Buffer.StructureByteStride = structureByteStride;
+		desc.Buffer.FirstElement = firstElement;
+		desc.Buffer.Flags = flags;
+
+		device->CreateShaderResourceView(resource, &desc, cpuHandle);
+	}
 
 	inline void create_texture2D_UAV(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle, ID3D12Resource* resource,DXGI_FORMAT format, 
 		ID3D12Resource* counterResource, UINT mipSlice, UINT planeSlice)
@@ -95,7 +110,7 @@ namespace pdx12
 		ID3D12Resource* counterResource,UINT numElements,UINT structureByteStride,UINT firstElement,UINT counterOffsetInBytes,D3D12_BUFFER_UAV_FLAGS flags)
 	{
 		D3D12_UNORDERED_ACCESS_VIEW_DESC desc{};
-		//unknownŒÅ’è‚Á‚Û‚¢
+		//ViewDimensio‚ªBuffer‚Ìê‡‚ÍFormat‚ÍUnknownŒÅ’è‚Á‚Û‚¢
 		desc.Format = DXGI_FORMAT_UNKNOWN;
 		desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 		desc.Buffer.NumElements = numElements;
@@ -106,7 +121,6 @@ namespace pdx12
 
 		device->CreateUnorderedAccessView(resource, counterResource, &desc, cpuHandle);
 	}
-
 
 	inline void create_texture2D_array_UAV(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle, ID3D12Resource* resource,DXGI_FORMAT format, 
 		ID3D12Resource* counterResource, UINT arraySize, UINT firstArraySlice, UINT mipSlice, UINT planeSlice)
