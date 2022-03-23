@@ -1,5 +1,10 @@
 #include"Header.hlsli"
 
+int Alignment(int size, int alignment) {
+	return size + alignment - size % alignment;
+}
+
+
 float3 CalcDiffuse(float3 lightDir, float3 lightColor, float3 normal)
 {
 	float t = saturate(dot(normal, -lightDir));
@@ -23,13 +28,13 @@ float3 CalcDirectionLight(float3 normal, float3 toEye)
 
 float3 CalcPointLight(float2 uv,float3 worldPos,float3 normal,float3 toEye)
 {
+	int screenWidth = Alignment(cameraData.screenWidth, TILE_WIDTH);
+
 	//スクリーンをタイルで分割した時のセルのX座標
-	uint numCellX = (cameraData.screenWidth + TILE_WIDTH - 1) / TILE_WIDTH;
+	uint numCellX = (screenWidth + TILE_WIDTH - 1) / TILE_WIDTH;
 
 	//タイルのインデックス
-	//uint tileLindex = floor(uv.x / TILE_WIDTH) + floor(uv.y / TILE_HEIGHT) * numCellX;
-	//じゃね
-	uint tileIndex = floor(uv.x / TILE_WIDTH) + floor(uv.y / TILE_WIDTH) * numCellX;
+	uint tileIndex = floor(uv.x / TILE_WIDTH) + floor(uv.y / TILE_HEIGHT) * numCellX;
 
 	//このピクセルが含まれるタイルのライトインデックスのリストの開始位置
 	uint indexStart = tileIndex * lightData.pointLightNum;
@@ -38,11 +43,9 @@ float3 CalcPointLight(float2 uv,float3 worldPos,float3 normal,float3 toEye)
 	uint indexEnd = indexStart + lightData.pointLightNum;
 
 	float3 result = float3(0.f, 0.f, 0.f);
-	//for (uint i = indexStart; i < indexEnd; i++)
-	for (uint i = 0; i < lightData.pointLightNum; i++)
+	for (uint i = indexStart; i < indexEnd; i++)
 	{
-		//uint pointLightIndex = pointLightIndexBuffer[i];
-		uint pointLightIndex = i;
+		uint pointLightIndex = pointLightIndexBuffer[i];
 		if (pointLightIndex == 0xffffffff)
 		{
 			break;
@@ -53,7 +56,6 @@ float3 CalcPointLight(float2 uv,float3 worldPos,float3 normal,float3 toEye)
 
 		//影響率
 		float affect = 1.f - min(1.f, distance / lightData.pointLight[pointLightIndex].range);
-		//float affect = (distance < lightData.pointLight[pointLightIndex].range) ? 1.f : 0.f;
 
 		//affectの値を線形から変更する
 		//そしたらスぺきゅらの計算を行う

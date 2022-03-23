@@ -211,6 +211,8 @@ int main()
 
 	//ëSïîÉ[Éç
 	constexpr std::array<float, 4> zeroFloat4{ 0.f,0.f,0.f,0.f };
+	//ëSïîÉ[ÉçUintver
+	constexpr std::array<std::uint32_t, 4> zeroUint4{ 0,0,0,0 };
 
 
 	D3D12_CLEAR_VALUE grayClearValue{};
@@ -755,7 +757,8 @@ int main()
 
 
 	auto lightCullingRootSignater = pdx12::create_root_signature(device.get(),
-		{ { {/*CameraData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*LightData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*DepthBuffer*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV},{/*PointLightIndex*/D3D12_DESCRIPTOR_RANGE_TYPE_UAV} } }, {});
+		{ { {/*CameraData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*LightData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*DepthBuffer*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV},{/*PointLightIndex*/D3D12_DESCRIPTOR_RANGE_TYPE_UAV} } },
+		{ {D3D12_FILTER_MIN_MAG_MIP_LINEAR ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP,D3D12_COMPARISON_FUNC_NEVER} });
 
 	auto lightCullingComputePipelineState = pdx12::create_compute_pipeline(device.get(), lightCullingRootSignater.get(), lightCullingComputeShader.get());
 
@@ -796,11 +799,11 @@ int main()
 
 	CameraData cameraData{};
 	cameraData.view = view;
-	XMMatrixInverse(cameraData.viewInv.r, cameraData.view);
+	cameraData.viewInv = XMMatrixInverse(nullptr, cameraData.view);
 	cameraData.proj = proj;
-	XMMatrixInverse(cameraData.proj.r, cameraData.proj);
+	cameraData.projInv = XMMatrixInverse(nullptr, cameraData.proj);
 	cameraData.viewProj = view * proj;
-	XMMatrixInverse(cameraData.viewProjInv.r, cameraData.viewProj);
+	cameraData.viewProjInv = XMMatrixInverse(nullptr, cameraData.viewProj);
 	cameraData.cameraNear = CAMERA_NEAR_Z;
 	cameraData.cameraFar = CAMERA_FAR_Z;
 	cameraData.screenWidth = WINDOW_WIDTH;
@@ -923,11 +926,11 @@ int main()
 		lightViewProj = XMMatrixLookAtLH(lightPosVector, XMLoadFloat3(&target), XMLoadFloat3(&up)) * XMMatrixOrthographicLH(100, 100, -100.f, 200.f);
 		
 		cameraData.view = view;
-		XMMatrixInverse(cameraData.viewInv.r, cameraData.view);
+		cameraData.viewInv = XMMatrixInverse(nullptr, cameraData.view);
 		cameraData.proj = proj;
-		XMMatrixInverse(cameraData.proj.r, cameraData.proj);
+		cameraData.projInv = XMMatrixInverse(nullptr, cameraData.proj);
 		cameraData.viewProj = view * proj;
-		XMMatrixInverse(cameraData.viewProjInv.r, cameraData.viewProj);
+		cameraData.viewProjInv = XMMatrixInverse(nullptr, cameraData.viewProj);
 		cameraData.cameraNear = CAMERA_NEAR_Z;
 		cameraData.cameraFar = CAMERA_FAR_Z;
 		cameraData.screenWidth = WINDOW_WIDTH;
@@ -1116,7 +1119,7 @@ int main()
 		}
 		commandManager.get_list()->SetComputeRootDescriptorTable(0, lightCullingDescriptorHeapCBVSRVUAV.get_GPU_handle(0));
 		commandManager.get_list()->SetPipelineState(lightCullingComputePipelineState.get());
-		commandManager.get_list()->Dispatch(WINDOW_WIDTH / LIGHT_CULLING_TILE_WIDTH, WINDOW_HEIGHT / LIGHT_CULLING_TILE_HEIGHT, 1);
+		commandManager.get_list()->Dispatch(pdx12::alignment(WINDOW_WIDTH, LIGHT_CULLING_TILE_WIDTH) / LIGHT_CULLING_TILE_WIDTH, pdx12::alignment(WINDOW_HEIGHT, LIGHT_CULLING_TILE_HEIGHT) / LIGHT_CULLING_TILE_HEIGHT, 1);
 		pdx12::resource_barrior(commandManager.get_list(), pointLightIndexResource, D3D12_RESOURCE_STATE_COMMON);
 
 

@@ -13,11 +13,13 @@ cbuffer LightData : register(b1)
 }
 
 //デプスバッファ
-Texture2D<float4> depthBuffer : register(t0);
+Texture2D<float> depthBuffer : register(t0);
 
 //出力
 //影響を受けるライトの添え字が格納される
 RWStructuredBuffer<uint> pointLightIndexBuffer : register(u0);
+
+SamplerState smp: register(s0);
 
 //共有メモリ
 //タイルの最小深度
@@ -37,7 +39,7 @@ void GetTileFrustumPlane(out float4 frustumPlanes[6], uint3 groupID)
 	float minTileZ = asfloat(minZ);
 	float maxTileZ = asfloat(maxZ);
 
-	float2 tileScale = float2(cameraData.screenWidth, cameraData.screenHeight) * rcp(float(2 * TILE_WIDTH));
+	float2 tileScale = float2(cameraData.screenWidth, cameraData.screenHeight) * rcp(float2(2 * TILE_WIDTH, 2 * TILE_HEIGHT));
 	float2 tileBias = tileScale - float2(groupID.xy);
 
 	float4 c1 = float4(cameraData.proj._11 * tileScale.x, 0.f, tileBias.x, 0.f);
@@ -69,12 +71,13 @@ void GetTileFrustumPlane(out float4 frustumPlanes[6], uint3 groupID)
 //カメラ空間での座標を計算する
 float3 ComputePositionInCamera(uint2 globalCoords)
 {
+	//globalCoordsから-1,1の範囲に収めた座標を導出
 	float2 st = ((float2)globalCoords + 0.5) * rcp(float2(cameraData.screenWidth, cameraData.screenHeight));
 	st = st * float2(2.f, -2.f) - float2(1.f, -1.f);
 
 	float3 screenPos;
 	screenPos.xy = st.xy;
-	screenPos.z = depthBuffer.Load(uint3(globalCoords, 0));
+	screenPos.z = depthBuffer.SampleLevel(smp, globalCoords, 0);
 	float4 cameraPos = mul(cameraData.projInv, float4(screenPos, 1.f));
 
 	return cameraPos.xyz / cameraPos.w;
@@ -130,8 +133,7 @@ void main(uint3 groupID : SV_GroupID, uint3 dispatchThreadID : SV_DispatchThread
 			float d = dot(frustumPlanes[i], lp);
 			isHit = isHit && (d >= -pointLight.range);
 		}
-		//
-		isHit = true;
+		
 		//タイルと接触している場合
 		if (isHit)
 		{
