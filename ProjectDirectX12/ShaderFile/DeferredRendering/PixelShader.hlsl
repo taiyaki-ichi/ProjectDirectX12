@@ -55,8 +55,10 @@ float3 CalcPointLight(float2 uv,float3 worldPos,float3 normal,float3 toEye)
 		float affect = 1.f - min(1.f, distance / lightData.pointLight[pointLightIndex].range);
 		//float affect = (distance < lightData.pointLight[pointLightIndex].range) ? 1.f : 0.f;
 
+		//affectの値を線形から変更する
+		//そしたらスぺきゅらの計算を行う
 		result += CalcDiffuse(lightDir, lightData.pointLight[pointLightIndex].color, normal) * affect;
-		result += CalcSpecular(lightDir, lightData.pointLight[pointLightIndex].color, normal, toEye) * affect;
+		//result += CalcSpecular(lightDir, lightData.pointLight[pointLightIndex].color, normal, toEye) * affect;
 	}
 
 	return result;
@@ -76,7 +78,7 @@ PSOutput main(VSOutput input)
 
 	float3 ambient = (albedoColor * 0.6f).xyz;
 	float3 directionLightColor = CalcDirectionLight(normal, toEye);
-	float3 pointLightColor = float3(0.f, 0.f, 0.f);// CalcPointLight(input.pos.xy, worldPosition.xyz, normal, toEye);
+	float3 pointLightColor = CalcPointLight(input.pos.xy, worldPosition.xyz, normal, toEye);
 
 	output.color = float4(ambient + directionLightColor + pointLightColor, 1.f);
 

@@ -812,26 +812,26 @@ int main()
 	lightData.directionLight.color = lightColor;
 
 	lightData.pointLight[0].color = { 0.5f,0.f,0.f };
-	lightData.pointLight[0].pos = { -10.f,1.f,0.f };
+	lightData.pointLight[0].pos = { 10.f,1.f,0.f };
 	lightData.pointLight[0].posInView = lightData.pointLight[0].pos;
 	pdx12::apply(lightData.pointLight[0].posInView, view);
 	lightData.pointLight[0].range = 10.f;
 
 	lightData.pointLight[1].color = { 0.f,0.5f,0.f };
-	lightData.pointLight[1].pos = { -10.f,1.f,-10.f };
+	lightData.pointLight[1].pos = { 10.f,1.f,10.f };
 	lightData.pointLight[1].posInView = lightData.pointLight[1].pos;
 	pdx12::apply(lightData.pointLight[1].posInView, view);
 	lightData.pointLight[1].range = 10.f;
 
 	lightData.pointLight[2].color = { 0.f,0.f,0.5f };
-	lightData.pointLight[2].pos = { 0.f,1.f,-10.f };
+	lightData.pointLight[2].pos = { 0.f,1.f,10.f };
 	lightData.pointLight[2].posInView = lightData.pointLight[2].pos;
 	pdx12::apply(lightData.pointLight[2].posInView, view);
 	lightData.pointLight[2].range = 10.f;
 
 	lightData.pointLightNum = 3;
 
-	lightData.specPow = 10.f;
+	lightData.specPow = 100.f;
 
 
 	PostEffectData posEffectData{
