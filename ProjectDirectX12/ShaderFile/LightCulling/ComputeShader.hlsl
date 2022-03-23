@@ -100,6 +100,18 @@ void main(uint3 groupID : SV_GroupID, uint3 dispatchThreadID : SV_DispatchThread
 	}
 
 	uint2 frameUV = dispatchThreadID.xy;
+	uint numCellX = (cameraData.screenWidth + TILE_WIDTH - 1) / TILE_WIDTH;
+	uint tileIndex = floor(frameUV.x / TILE_WIDTH) + floor(frameUV.y / TILE_HEIGHT) * numCellX;
+	uint lightStart = lightData.pointLightNum * tileIndex;
+
+	//結果を格納するバッファの初期化
+	//ClearUnorderedAccessViewUintってコマンドがあるけど
+	//アップロード用の別のバッファをつくらなければ使えないっぽく
+	//手間かかりそうなのでここで初期化する
+	for (uint lightIndex = groupIndex; lightIndex < lightData.pointLightNum; lightIndex += TILE_NUM)
+	{
+		pointLightIndexBuffer[lightStart + lightIndex] = 0xffffffff;
+	}
 
 	//ビュー空間での座標
 	float3 posInView = ComputePositionInCamera(frameUV);
@@ -150,17 +162,9 @@ void main(uint3 groupID : SV_GroupID, uint3 dispatchThreadID : SV_DispatchThread
 
 
 	//結果を格納する
-	uint numCellX = (cameraData.screenWidth + TILE_WIDTH - 1) / TILE_WIDTH;
-	uint tileIndex = floor(frameUV.x / TILE_WIDTH) + floor(frameUV.y / TILE_HEIGHT) * numCellX;
-	uint lightStart = lightData.pointLightNum * tileIndex;
 	for (uint lightIndex = groupIndex; lightIndex < tileLightNum; lightIndex += TILE_NUM)
 	{
 		pointLightIndexBuffer[lightStart + lightIndex] = tileLightIndex[lightIndex];
 	}
 
-	if (groupIndex == 0 && tileLightNum < lightData.pointLightNum)
-	{
-		//番兵
-		pointLightIndexBuffer[lightStart + tileLightNum] = 0xffffffff;
-	}
 }
