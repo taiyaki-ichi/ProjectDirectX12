@@ -1,19 +1,23 @@
+#include"../CameraData.hlsli"
+#include"../LightData.hlsli"
 
-cbuffer SceneData : register(b0)
+cbuffer CameraDataConstantBuffer : register(b0)
 {
-	matrix view;
-	matrix proj;
-	float4 lightColor;
-	float4 lightDir;
-	float3 eye;
-	matrix lightViewProj[3];
-};
+	CameraData cameraData;
+}
+
+cbuffer LightDataConstantBuffer : register(b1)
+{
+	LightData lightData;
+}
 
 Texture2D<float4> albedoColorTexture: register(t0);
 Texture2D<float4> normalTexture: register(t1);
 Texture2D<float4> worldPositionTexture: register(t2);
 
-Texture2D<float4> shadowMap[3] : register(t3);
+Texture2D<float4> shadowMap[SHADOW_MAP_NUM] : register(t3);
+
+StructuredBuffer<uint> pointLightIndexBuffer : register(t6);
 
 SamplerState smp: register(s0);
 

@@ -97,6 +97,41 @@ namespace pdx12
 		return { release_unique_ptr<ID3D12Resource>{tmp},initialState };
 	}
 
+	inline resource_and_state create_commited_buffer_resource(ID3D12Device* device, UINT64 size,D3D12_RESOURCE_FLAGS flags)
+	{
+		D3D12_HEAP_PROPERTIES heapProperties{};
+		heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
+		heapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		heapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+
+		D3D12_RESOURCE_DESC resourceDesc{};
+		resourceDesc.Width = size;
+		resourceDesc.Height = 1;
+		resourceDesc.DepthOrArraySize = 1;
+		resourceDesc.MipLevels = 1;
+		resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+		resourceDesc.SampleDesc.Count = 1;
+		resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		resourceDesc.Flags = flags;
+
+		ID3D12Resource* tmp = nullptr;
+
+		D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
+
+		if (FAILED(device->CreateCommittedResource(
+			&heapProperties,
+			D3D12_HEAP_FLAG_NONE,
+			&resourceDesc,
+			initialState,
+			nullptr,
+			IID_PPV_ARGS(&tmp))))
+		{
+			THROW_PDX12_EXCEPTION("failed CreateCommittedResource");
+		}
+
+		return { release_unique_ptr<ID3D12Resource>{tmp}, initialState };
+	}
 
 	//リソースバリアを作成しresource.secondを更新
 	inline void resource_barrior(ID3D12GraphicsCommandList* list,resource_and_state& resource, D3D12_RESOURCE_STATES afterState)

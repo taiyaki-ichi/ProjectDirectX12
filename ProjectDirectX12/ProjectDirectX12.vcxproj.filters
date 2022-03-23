@@ -31,6 +31,7 @@
     <FxCompile Include="ShaderFile\SimpleGround\PixelShader.hlsl" />
     <FxCompile Include="ShaderFile\SimpleModel\ShadowVertexShader.hlsl" />
     <FxCompile Include="ShaderFile\SimpleGround\ShadowVertexShader.hlsl" />
+    <FxCompile Include="ShaderFile\LightCulling\ComputeShader.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ShaderFile\SimpleModel\Header.hlsli" />
@@ -39,5 +40,7 @@
     <None Include="ShaderFile\HighLuminance\Header.hlsli" />
     <None Include="ShaderFile\MainColorDownSampling\Header.hlsli" />
     <None Include="ShaderFile\SimpleGround\Header.hlsli" />
+    <None Include="ShaderFile\CameraData.hlsli" />
+    <None Include="ShaderFile\LightData.hlsli" />
   </ItemGroup>
 </Project>
