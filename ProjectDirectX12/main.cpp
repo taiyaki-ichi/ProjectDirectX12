@@ -143,7 +143,7 @@ int main()
 	constexpr DXGI_FORMAT SHRINKED_HIGH_LUMINANCE_FORMAT = HIGH_LUMINANCE_FORMAT;
 
 	//縮小された高輝度のリソースの数
-	constexpr std::size_t SHRINKED_HIGH_LUMINANCE_NUM = 8;
+	constexpr std::size_t SHRINKED_HIGH_LUMINANCE_NUM = 4;
 
 	//ポストエフェクトをかける前のリソースのフォーマット
 	//フレームバッファのフォーマットと同じで
@@ -154,7 +154,7 @@ int main()
 	constexpr DXGI_FORMAT SHRINKED_MAIN_COLOR_RESOURCE_FORMAT = MAIN_COLOR_RESOURCE_FORMAT;
 
 	//縮小されダウンサンプリングされたリソースのフォーマットの数
-	constexpr std::size_t SHRINKED_MAIN_COLOR_RESOURCE_NUM = 8;
+	constexpr std::size_t SHRINKED_MAIN_COLOR_RESOURCE_NUM = 4;
 
 	//シャドウマップのフォーマット
 	constexpr DXGI_FORMAT SHADOW_MAP_FORMAT = DXGI_FORMAT_D32_FLOAT;
