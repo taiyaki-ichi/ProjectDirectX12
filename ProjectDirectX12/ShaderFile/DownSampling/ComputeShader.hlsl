@@ -10,6 +10,7 @@
 Texture2D<float4> srcTexture : register(t0);
 
 //結果を格のするテクスチャ
+//添え字が一つ大きくなるたび大きさが半分になる
 RWTexture2D<float4> resultTexture[RESULT_TEXTURE_NUM] : register(u0);
 
 SamplerState smp : register(s0);
