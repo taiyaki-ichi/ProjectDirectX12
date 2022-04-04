@@ -102,6 +102,12 @@ struct GroundData
 	XMMATRIX world;
 };
 
+struct DownSamplingData
+{
+	float dispatchX;
+	float dispatchY;
+};
+
 int main()
 {
 #ifdef _DEBUG
@@ -148,6 +154,9 @@ int main()
 	//ポストエフェクトをかける前のリソースのフォーマット
 	//フレームバッファのフォーマットと同じで
 	constexpr DXGI_FORMAT MAIN_COLOR_RESOURCE_FORMAT = FRAME_BUFFER_FORMAT;
+
+	constexpr std::size_t MAIN_COLOR_RESOURCE_WIDTH = WINDOW_WIDTH;
+	constexpr std::size_t MAIN_COLOR_RESOURCE_HEIGHT = WINDOW_HEIGHT;
 
 	//縮小されダウンサンプリングされたリソースのフォーマット
 	//被写界深度のポストエフェクトをかける際に使用する
@@ -354,8 +363,11 @@ int main()
 	}
 
 	//ポストエフェクトをかける前のリソース
-	auto mainColorResource = pdx12::create_commited_texture_resource(device.get(), MAIN_COLOR_RESOURCE_FORMAT, WINDOW_WIDTH, WINDOW_HEIGHT, 2,
+	auto mainColorResource = pdx12::create_commited_texture_resource(device.get(), MAIN_COLOR_RESOURCE_FORMAT, MAIN_COLOR_RESOURCE_WIDTH, MAIN_COLOR_RESOURCE_HEIGHT, 2,
 		1, 1, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, &grayClearValue);
+
+	//ダウンサンプリングを行う際の定数バッファのリソース
+	auto mainColorDownSamplingDataResource = pdx12::create_commited_upload_buffer_resource(device.get(), pdx12::alignment<UINT64>(sizeof(DownSamplingData), 256));
 
 	//縮小されたポストエフェクトをかける前のリソース
 	//被写界深度を考慮する際に使用する
@@ -368,8 +380,14 @@ int main()
 		{
 			w /= 2.f;
 			h /= 2.f;
+
+			//
+			//TODO: flagの修正
+			//
+			//shrinkedMainColorResource[i] = pdx12::create_commited_texture_resource(device.get(), SHRINKED_MAIN_COLOR_RESOURCE_FORMAT, w, h, 2,
+				//1, 1, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, &clearValue);
 			shrinkedMainColorResource[i] = pdx12::create_commited_texture_resource(device.get(), SHRINKED_MAIN_COLOR_RESOURCE_FORMAT, w, h, 2,
-				1, 1, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, &clearValue);
+				1, 1, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, nullptr);
 		}
 	}
 
@@ -546,6 +564,11 @@ int main()
 	}
 
 	//メインカラーをダウンサンプリングする際に使用するレンダーターゲット用のデスクリプタヒープ
+
+	//
+	//TODO: 削除
+	//
+	/*
 	pdx12::descriptor_heap mainColorDownSamplingDescriptorHeapRTV{};
 	{
 		mainColorDownSamplingDescriptorHeapRTV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV, SHRINKED_MAIN_COLOR_RESOURCE_NUM);
@@ -553,22 +576,25 @@ int main()
 			pdx12::create_texture2D_RTV(device.get(), mainColorDownSamplingDescriptorHeapRTV.get_CPU_handle(i), 
 				shrinkedMainColorResource[i].first.get(),SHRINKED_HIGH_LUMINANCE_FORMAT, 0, 0);
 	}
+	*/
 
 	//メインカラーをダウンサンプリングする際に使用するシェーダリソース用のデスクリプタヒープ
 	pdx12::descriptor_heap mainColorDownSamplingDescriptorHeapCBVSRVUAV{};
 	{
-		//1つ目は通常のサイズのメインカラー、2つ目以降は縮小されたメインカラー
-		mainColorDownSamplingDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1 + SHRINKED_MAIN_COLOR_RESOURCE_NUM);
+		mainColorDownSamplingDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 2 + SHRINKED_MAIN_COLOR_RESOURCE_NUM);
 
-		//1つ目は通常のサイズのメインカラーのシェーダリソースビュー
-		pdx12::create_texture2D_SRV(device.get(), mainColorDownSamplingDescriptorHeapCBVSRVUAV.get_CPU_handle(0),
+		pdx12::create_CBV(device.get(), mainColorDownSamplingDescriptorHeapCBVSRVUAV.get_CPU_handle(0),
+			mainColorDownSamplingDataResource.first.get(), pdx12::alignment<UINT64>(sizeof(DownSamplingData), 256));
+
+		//通常のサイズのメインカラーのシェーダリソースビュー
+		pdx12::create_texture2D_SRV(device.get(), mainColorDownSamplingDescriptorHeapCBVSRVUAV.get_CPU_handle(1),
 			mainColorResource.first.get(), MAIN_COLOR_RESOURCE_FORMAT, 1, 0, 0, 0.f);
 
-		//2つ目以降は縮小されたメインカラーのシェーダリソースビュー
+		//以降は縮小されたメインカラーのシェーダリソースビュー
 		for (std::size_t i = 0; i < SHRINKED_MAIN_COLOR_RESOURCE_NUM; i++)
 		{
-			pdx12::create_texture2D_SRV(device.get(), mainColorDownSamplingDescriptorHeapCBVSRVUAV.get_CPU_handle(1 + i),
-				shrinkedMainColorResource[i].first.get(), SHRINKED_MAIN_COLOR_RESOURCE_FORMAT, 1, 0, 0, 0.f);
+			pdx12::create_texture2D_UAV(device.get(), mainColorDownSamplingDescriptorHeapCBVSRVUAV.get_CPU_handle(2 + i),
+				shrinkedMainColorResource[i].first.get(), SHRINKED_MAIN_COLOR_RESOURCE_FORMAT, nullptr, 0, 0);
 		}
 	}
 
@@ -670,6 +696,9 @@ int main()
 	auto mainColorDownSamplingVertexShader = pdx12::create_shader(L"ShaderFile/MainColorDownSampling/VertexShader.hlsl", "main", "vs_5_0");
 	auto mainColorDownSamplingPixelShader = pdx12::create_shader(L"ShaderFile/MainColorDownSampling/PixelShader.hlsl", "main", "ps_5_0");
 
+	//ダウンサンプリングを行うコンピュートシェーダ
+	auto downSamplingComputeShader = pdx12::create_shader(L"ShaderFile/DownSampling/ComputeShader.hlsl", "main", "cs_5_0");
+
 	//ポストエフェクトをかけるシェーダ
 	auto postEffectVertexShader = pdx12::create_shader(L"ShaderFile/PostEffect/VertexShader.hlsl", "main", "vs_5_0");
 	auto postEffectPixelShader = pdx12::create_shader(L"ShaderFile/PostEffect/PixelShader.hlsl", "main", "ps_5_0");
@@ -742,6 +771,13 @@ int main()
 		{ { "POSITION",DXGI_FORMAT_R32G32B32_FLOAT },{ "TEXCOOD",DXGI_FORMAT_R32G32_FLOAT } },
 		{ SHRINKED_MAIN_COLOR_RESOURCE_FORMAT }, { mainColorDownSamplingVertexShader.get(),mainColorDownSamplingPixelShader.get() }
 	, false, false, D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+
+
+	auto downSamplingRootSignature = pdx12::create_root_signature(device.get(),
+		{ {{/*ディスパッチの情報*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV}, {/*ダウンサンプリングされる元のテクスチャ*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV},{/*ダウンサンプリング*/D3D12_DESCRIPTOR_RANGE_TYPE_UAV,SHRINKED_MAIN_COLOR_RESOURCE_NUM}} },
+		{ {D3D12_FILTER_MIN_MAG_MIP_LINEAR ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP,D3D12_COMPARISON_FUNC_NEVER} });
+
+	auto downSamplingPipelineState = pdx12::create_compute_pipeline(device.get(), downSamplingRootSignature.get(), downSamplingComputeShader.get());
 
 
 	auto postEffectRootSignature = pdx12::create_root_signature(device.get(),
@@ -890,6 +926,21 @@ int main()
 
 		for (std::size_t j = 0; j < vertex.size(); j++)
 			pdx12::apply(vertex[j], clop);
+	}
+
+	DownSamplingData mainColorDownSamplingData{};
+	{
+		auto tileWidth = 1 << (SHRINKED_MAIN_COLOR_RESOURCE_NUM - 1);
+		auto tiileHeight = 1 << (SHRINKED_MAIN_COLOR_RESOURCE_NUM - 1);
+		auto dispatchX = pdx12::alignment<UINT>(MAIN_COLOR_RESOURCE_WIDTH, tileWidth) / tileWidth;
+		auto dispatchY = pdx12::alignment<UINT>(MAIN_COLOR_RESOURCE_HEIGHT, tiileHeight) / tiileHeight;
+
+		mainColorDownSamplingData.dispatchX = dispatchX;
+		mainColorDownSamplingData.dispatchY = dispatchY;
+
+		DownSamplingData* mappedDownSamplingData = nullptr;
+		mainColorDownSamplingDataResource.first.get()->Map(0, nullptr, reinterpret_cast<void**>(&mappedDownSamplingData));
+		*mappedDownSamplingData = mainColorDownSamplingData;
 	}
 
 
@@ -1212,6 +1263,7 @@ int main()
 		//
 
 		{
+			/*
 			std::size_t w = WINDOW_WIDTH;
 			std::size_t h = WINDOW_HEIGHT;
 			for (std::size_t i = 0; i < SHRINKED_MAIN_COLOR_RESOURCE_NUM; i++)
@@ -1249,6 +1301,24 @@ int main()
 
 				pdx12::resource_barrior(commandManager.get_list(), shrinkedMainColorResource[i], D3D12_RESOURCE_STATE_COMMON);
 			}
+			*/
+
+			for (std::size_t i = 0; i < SHRINKED_MAIN_COLOR_RESOURCE_NUM; i++)
+				pdx12::resource_barrior(commandManager.get_list(), shrinkedMainColorResource[i], D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+			commandManager.get_list()->SetComputeRootSignature(downSamplingRootSignature.get());
+			{
+				auto ptr = mainColorDownSamplingDescriptorHeapCBVSRVUAV.get();
+				commandManager.get_list()->SetDescriptorHeaps(1, &ptr);
+			}
+			commandManager.get_list()->SetComputeRootDescriptorTable(0, mainColorDownSamplingDescriptorHeapCBVSRVUAV.get_GPU_handle(0));
+			commandManager.get_list()->SetPipelineState(downSamplingPipelineState.get());
+
+
+			commandManager.get_list()->Dispatch(mainColorDownSamplingData.dispatchX, mainColorDownSamplingData.dispatchY, 1);
+
+			for (std::size_t i = 0; i < SHRINKED_MAIN_COLOR_RESOURCE_NUM; i++)
+				pdx12::resource_barrior(commandManager.get_list(), shrinkedMainColorResource[i], D3D12_RESOURCE_STATE_COMMON);
 		}
 
 		//

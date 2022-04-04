@@ -32,6 +32,7 @@
     <FxCompile Include="ShaderFile\SimpleModel\ShadowVertexShader.hlsl" />
     <FxCompile Include="ShaderFile\SimpleGround\ShadowVertexShader.hlsl" />
     <FxCompile Include="ShaderFile\LightCulling\ComputeShader.hlsl" />
+    <FxCompile Include="ShaderFile\DownSampling\ComputeShader.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ShaderFile\SimpleModel\Header.hlsli" />
