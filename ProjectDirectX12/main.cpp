@@ -114,8 +114,8 @@ int main()
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
 
-	constexpr std::size_t WINDOW_WIDTH = 500;
-	constexpr std::size_t WINDOW_HEIGHT = 500;
+	constexpr std::size_t WINDOW_WIDTH = 800;
+	constexpr std::size_t WINDOW_HEIGHT = 700;
 
 	constexpr float CAMERA_NEAR_Z = 0.01f;
 	constexpr float CAMERA_FAR_Z = 100.f;
@@ -378,8 +378,8 @@ int main()
 		std::size_t h = WINDOW_HEIGHT;
 		for (std::size_t i = 0; i < SHRINKED_MAIN_COLOR_RESOURCE_NUM; i++)
 		{
-			w /= 2.f;
-			h /= 2.f;
+			w /= 2;
+			h /= 2;
 
 			shrinkedMainColorResource[i] = pdx12::create_commited_texture_resource(device.get(), SHRINKED_MAIN_COLOR_RESOURCE_FORMAT, w, h, 2,
 				1, 1, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, nullptr);
@@ -855,8 +855,8 @@ int main()
 
 	PostEffectData posEffectData{
 		{0.5f,0.5f},
-		0.5f,
-		0.f,
+		0.1f,
+		0.1f,
 		1.f,
 	};
 
@@ -941,7 +941,7 @@ int main()
 
 		
 		cnt++;
-		eye = { 3.f * std::sin(cnt * 0.01f),3.f,3.f * std::cos(cnt * 0.01f) };
+		eye = { 5.f * std::sin(cnt * 0.01f),2.f,3.f * std::cos(cnt * 0.01f) };
 		view = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
 		proj = DirectX::XMMatrixPerspectiveFovLH(
 			VIEW_ANGLE,
