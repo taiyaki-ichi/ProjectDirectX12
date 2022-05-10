@@ -827,7 +827,37 @@ int main()
 	pdx12::apply(lightData.pointLight[2].posInView, view);
 	lightData.pointLight[2].range = 10.f;
 
-	lightData.pointLightNum = 3;
+	lightData.pointLight[3].color = { 0.5f,0.5f,0.f };
+	lightData.pointLight[3].pos = { -10.f,1.f,0.f };
+	lightData.pointLight[3].posInView = lightData.pointLight[3].pos;
+	pdx12::apply(lightData.pointLight[3].posInView, view);
+	lightData.pointLight[3].range = 10.f;
+
+	lightData.pointLight[4].color = { 0.f,0.5f,0.5f };
+	lightData.pointLight[4].pos = { -10.f,1.f,-10.f };
+	lightData.pointLight[4].posInView = lightData.pointLight[4].pos;
+	pdx12::apply(lightData.pointLight[4].posInView, view);
+	lightData.pointLight[4].range = 10.f;
+
+	lightData.pointLight[5].color = { 0.5f,0.f,0.5f };
+	lightData.pointLight[5].pos = { 0.f,1.f,-10.f };
+	lightData.pointLight[5].posInView = lightData.pointLight[5].pos;
+	pdx12::apply(lightData.pointLight[5].posInView, view);
+	lightData.pointLight[5].range = 10.f;
+
+	lightData.pointLight[6].color = { 1.f,0.f,0.0f };
+	lightData.pointLight[6].pos = { 0.f,1.f,50.f };
+	lightData.pointLight[6].posInView = lightData.pointLight[6].pos;
+	pdx12::apply(lightData.pointLight[6].posInView, view);
+	lightData.pointLight[6].range = 30.f;
+
+	lightData.pointLight[7].color = { 1.f,0.f,0.0f };
+	lightData.pointLight[7].pos = { 50.f,1.f,50.f };
+	lightData.pointLight[7].posInView = lightData.pointLight[7].pos;
+	pdx12::apply(lightData.pointLight[7].posInView, view);
+	lightData.pointLight[7].range = 50.f;
+
+	lightData.pointLightNum = 8;
 
 	lightData.specPow = 100.f;
 
