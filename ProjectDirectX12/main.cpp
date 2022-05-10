@@ -673,10 +673,6 @@ int main()
 	auto deferredRenderingVertexShader = pdx12::create_shader(L"ShaderFile/DeferredRendering/VertexShader.hlsl", "main", "vs_5_0");
 	auto deferredRenderingPixelShader = pdx12::create_shader(L"ShaderFile/DeferredRendering/PixelShader.hlsl", "main", "ps_5_0");
 
-	//ダウンサンプリング用のシェーダ
-	auto mainColorDownSamplingVertexShader = pdx12::create_shader(L"ShaderFile/MainColorDownSampling/VertexShader.hlsl", "main", "vs_5_0");
-	auto mainColorDownSamplingPixelShader = pdx12::create_shader(L"ShaderFile/MainColorDownSampling/PixelShader.hlsl", "main", "ps_5_0");
-
 	//ダウンサンプリングを行うコンピュートシェーダ
 	auto downSamplingComputeShader = pdx12::create_shader(L"ShaderFile/DownSampling/ComputeShader.hlsl", "main", "cs_5_0");
 
