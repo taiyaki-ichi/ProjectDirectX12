@@ -23,8 +23,6 @@
     <FxCompile Include="ShaderFile\DeferredRendering\PixelShader.hlsl" />
     <FxCompile Include="ShaderFile\PostEffect\VertexShader.hlsl" />
     <FxCompile Include="ShaderFile\PostEffect\PixelShader.hlsl" />
-    <FxCompile Include="ShaderFile\HighLuminance\PixelShader.hlsl" />
-    <FxCompile Include="ShaderFile\HighLuminance\VertexShader.hlsl" />
     <FxCompile Include="ShaderFile\MainColorDownSampling\VertexShader.hlsl" />
     <FxCompile Include="ShaderFile\MainColorDownSampling\PixelShader.hlsl" />
     <FxCompile Include="ShaderFile\SimpleGround\VertexShader.hlsl" />
@@ -38,7 +36,6 @@
     <None Include="ShaderFile\SimpleModel\Header.hlsli" />
     <None Include="ShaderFile\DeferredRendering\Header.hlsli" />
     <None Include="ShaderFile\PostEffect\Header.hlsli" />
-    <None Include="ShaderFile\HighLuminance\Header.hlsli" />
     <None Include="ShaderFile\MainColorDownSampling\Header.hlsli" />
     <None Include="ShaderFile\SimpleGround\Header.hlsli" />
     <None Include="ShaderFile\CameraData.hlsli" />
