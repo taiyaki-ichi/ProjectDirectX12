@@ -1197,49 +1197,6 @@ int main()
 		//
 		//高輝度のダウンサンプリング
 		//
-
-		/*
-		{
-			std::size_t w = WINDOW_WIDTH;
-			std::size_t h = WINDOW_HEIGHT;
-			for (std::size_t i = 0; i < SHRINKED_HIGH_LUMINANCE_NUM; i++)
-			{
-				w /= 2.f;
-				h /= 2.f;
-
-				D3D12_VIEWPORT viewport{ 0,0, w,h,0.f,1.f };
-				D3D12_RECT scissorRect{ 0,0,w,h };
-
-				commandManager.get_list()->RSSetViewports(1, &viewport);
-				commandManager.get_list()->RSSetScissorRects(1, &scissorRect);
-
-				pdx12::resource_barrior(commandManager.get_list(), shrinkedHighLuminanceResource[i], D3D12_RESOURCE_STATE_RENDER_TARGET);
-
-				commandManager.get_list()->ClearRenderTargetView(highLuminanceDescriptorHeapRTV.get_CPU_handle(i), zeroFloat4.data(), 0, nullptr);
-
-				auto renderTargetCPUHandle = highLuminanceDescriptorHeapRTV.get_CPU_handle(i);
-				commandManager.get_list()->OMSetRenderTargets(1, &renderTargetCPUHandle, false, nullptr);
-
-				commandManager.get_list()->SetGraphicsRootSignature(highLuminanceRootSignature.get());
-				{
-					auto ptr = highLuminanceDownSamplingDescriptorHeapCBVSRVUAV.get();
-					commandManager.get_list()->SetDescriptorHeaps(1, &ptr);
-				}
-				//ルートのハンドルはループごとにずらしサイズが１つ大きいテクスチャを参照できるようにする
-				commandManager.get_list()->SetGraphicsRootDescriptorTable(0, highLuminanceDownSamplingDescriptorHeapCBVSRVUAV.get_GPU_handle(i));
-				commandManager.get_list()->SetPipelineState(highLuminanceGraphicsPipelineState.get());
-				//LISTではない
-				commandManager.get_list()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-
-				commandManager.get_list()->IASetVertexBuffers(0, 1, &peraPolygonVertexBufferView);
-
-				commandManager.get_list()->DrawInstanced(peraPolygonVertexNum, 1, 0, 0);
-
-				pdx12::resource_barrior(commandManager.get_list(), shrinkedHighLuminanceResource[i], D3D12_RESOURCE_STATE_COMMON);
-			}
-		}
-		*/
-
 		{
 			for (std::size_t i = 0; i < SHRINKED_HIGH_LUMINANCE_NUM; i++)
 				pdx12::resource_barrior(commandManager.get_list(), shrinkedHighLuminanceResource[i], D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
