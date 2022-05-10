@@ -56,7 +56,9 @@ float4 main(VSOutput input) : SV_TARGET
 	float4 highLuminanceSum = float4(0.f, 0.f, 0.f, 0.f);
 	for (int i = 0; i < SHRINK_HIGHT_LUMINANCE_TEXTURE_NUM; i++)
 	{
-		highLuminanceSum += shrinkedHighLuminanceTexture[i].Sample(smp, input.uv);
+		float width, height, miplevels;
+		shrinkedHighLuminanceTexture[i].GetDimensions(0, width, height, miplevels);
+		highLuminanceSum += getTexture5x5GaussianBlur(shrinkedHighLuminanceTexture[i], smp, input.uv, 1.f / width, 1.f / height, uint4(0, 0, 1, 1));
 	}
 	float4 luminance = highLuminanceSum / (float)SHRINK_HIGHT_LUMINANCE_TEXTURE_NUM;
 	luminance *= luminanceDegree;
@@ -122,6 +124,7 @@ float4 main(VSOutput input) : SV_TARGET
 		}
 	}
 
+	//被写界深度で使用する深度の差の分布を確認する用
 	/*
 	if (n == 0)
 	{
