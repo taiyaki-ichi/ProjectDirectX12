@@ -36,8 +36,8 @@ groupshared uint tileLightNum;
 void GetTileFrustumPlane(out float4 frustumPlanes[6], uint3 groupID)
 {
 	//タイルの最大最小深度を浮動小数点に変換
-	float minTileZ = asfloat(minZ);
-	float maxTileZ = asfloat(maxZ);
+	float minTileZ = 0; asfloat(minZ);
+	float maxTileZ = 0x7F7FFFFF; asfloat(maxZ);
 
 	float2 tileScale = float2(cameraData.screenWidth, cameraData.screenHeight) * rcp(float2(2 * TILE_WIDTH, 2 * TILE_HEIGHT));
 	float2 tileBias = tileScale - float2(groupID.xy);
@@ -55,9 +55,9 @@ void GetTileFrustumPlane(out float4 frustumPlanes[6], uint3 groupID)
 	//下の面の法線
 	frustumPlanes[3] = c4 + c2;
 	//奥の面の法線
-	frustumPlanes[4] = float4(0.f, 0.f, 1.f, -minTileZ);//この面は原点を通らないので第四成分が0ではない
+	frustumPlanes[4] = float4(0.f, 0.f, 1.f, -minTileZ);
 	//手前の面の法線
-	frustumPlanes[5] = float4(0.f, 0.f, -1.f, maxTileZ);//この面は原点を通らないので第四成分が0ではない
+	frustumPlanes[5] = float4(0.f, 0.f, -1.f, maxTileZ);
 
 	//正規化する
 	[unroll]
@@ -77,7 +77,7 @@ float3 ComputePositionInCamera(uint2 globalCoords)
 
 	float3 screenPos;
 	screenPos.xy = st.xy;
-	screenPos.z = depthBuffer.SampleLevel(smp, globalCoords, 0);
+	screenPos.z = depthBuffer.SampleLevel(smp, st, 0);
 	float4 cameraPos = mul(cameraData.projInv, float4(screenPos, 1.f));
 
 	return cameraPos.xyz / cameraPos.w;
@@ -100,18 +100,10 @@ void main(uint3 groupID : SV_GroupID, uint3 dispatchThreadID : SV_DispatchThread
 	}
 
 	uint2 frameUV = dispatchThreadID.xy;
-	uint numCellX = (cameraData.screenWidth + TILE_WIDTH - 1) / TILE_WIDTH;
+	uint numCellX = (cameraData.screenWidth + TILE_WIDTH) / TILE_WIDTH;
 	uint tileIndex = floor(frameUV.x / TILE_WIDTH) + floor(frameUV.y / TILE_HEIGHT) * numCellX;
 	uint lightStart = lightData.pointLightNum * tileIndex;
 
-	//結果を格納するバッファの初期化
-	//ClearUnorderedAccessViewUintってコマンドがあるけど
-	//アップロード用の別のバッファをつくらなければ使えないっぽく
-	//手間かかりそうなのでここで初期化する
-	for (uint lightIndex = groupIndex; lightIndex < lightData.pointLightNum; lightIndex += TILE_NUM)
-	{
-		pointLightIndexBuffer[lightStart + lightIndex] = 0xffffffff;
-	}
 
 	//ビュー空間での座標
 	float3 posInView = ComputePositionInCamera(frameUV);
@@ -121,6 +113,7 @@ void main(uint3 groupID : SV_GroupID, uint3 dispatchThreadID : SV_DispatchThread
 
 
 	//タイルの最大最小深度を求める
+	//floatを直接扱うことはできないっぽい
 	InterlockedMin(minZ, asuint(posInView.z));
 	InterlockedMax(maxZ, asuint(posInView.z));
 
@@ -148,6 +141,7 @@ void main(uint3 groupID : SV_GroupID, uint3 dispatchThreadID : SV_DispatchThread
 		
 		//タイルと接触している場合
 		if (isHit)
+		//if(true)
 		{
 			uint listIndex = 0;
 			//tileLightNumに1を加算
@@ -167,4 +161,10 @@ void main(uint3 groupID : SV_GroupID, uint3 dispatchThreadID : SV_DispatchThread
 		pointLightIndexBuffer[lightStart + lightIndex] = tileLightIndex[lightIndex];
 	}
 
+	
+	//番兵
+	if ((groupIndex == 0) && (tileLightNum < lightData.pointLightNum))
+	{
+		pointLightIndexBuffer[lightStart + tileLightNum] = 0xffffffff;
+	}
 }

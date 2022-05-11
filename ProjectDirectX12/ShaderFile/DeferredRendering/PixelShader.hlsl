@@ -43,6 +43,8 @@ float3 CalcPointLight(float2 uv,float3 worldPos,float3 normal,float3 toEye)
 	uint indexEnd = indexStart + lightData.pointLightNum;
 
 	float3 result = float3(0.f, 0.f, 0.f);
+
+
 	for (uint i = indexStart; i < indexEnd; i++)
 	{
 		uint pointLightIndex = pointLightIndexBuffer[i];
@@ -62,7 +64,7 @@ float3 CalcPointLight(float2 uv,float3 worldPos,float3 normal,float3 toEye)
 		result += CalcDiffuse(lightDir, lightData.pointLight[pointLightIndex].color, normal) * affect;
 		//result += CalcSpecular(lightDir, lightData.pointLight[pointLightIndex].color, normal, toEye) * affect;
 	}
-
+	
 	return result;
 }
 

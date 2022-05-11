@@ -74,7 +74,10 @@ namespace pdx12
 
 	template<typename T>
 	inline constexpr T alignment(T size, T alignment) {
-		return size + alignment - size % alignment;
+		if (size % alignment == 0)
+			return size;
+		else
+			return size + alignment - size % alignment;
 	}
 
 
