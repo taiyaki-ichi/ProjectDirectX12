@@ -10,6 +10,7 @@
 #include"pipeline_state.hpp"
 #include"OBJ-Loader/Source/OBJ_Loader.h"
 #include<iostream>
+#include<random>
 #include<DirectXMath.h>
 
 #ifdef _DEBUG
@@ -114,7 +115,7 @@ int main()
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
 
-	constexpr std::size_t WINDOW_WIDTH = 800;
+	constexpr std::size_t WINDOW_WIDTH = 850;
 	constexpr std::size_t WINDOW_HEIGHT = 700;
 
 	constexpr float CAMERA_NEAR_Z = 0.01f;
@@ -808,56 +809,31 @@ int main()
 	LightData lightData{};
 	lightData.directionLight.dir = lightDir;
 	lightData.directionLight.color = lightColor;
+	
+	lightData.pointLightNum = 500;
 
-	lightData.pointLight[0].color = { 0.5f,0.f,0.f };
-	lightData.pointLight[0].pos = { 10.f,1.f,0.f };
-	lightData.pointLight[0].posInView = lightData.pointLight[0].pos;
-	pdx12::apply(lightData.pointLight[0].posInView, view);
-	lightData.pointLight[0].range = 10.f;
+	for (std::size_t i = 0; i < lightData.pointLightNum; i++)
+	{
+		std::random_device rnd;     
+		std::mt19937 mt(rnd()); 
+		std::uniform_real_distribution<float> r(0.f, 1.f);
 
-	lightData.pointLight[1].color = { 0.f,0.5f,0.f };
-	lightData.pointLight[1].pos = { 10.f,1.f,10.f };
-	lightData.pointLight[1].posInView = lightData.pointLight[1].pos;
-	pdx12::apply(lightData.pointLight[1].posInView, view);
-	lightData.pointLight[1].range = 10.f;
+		lightData.pointLight[i].color = {
+			r(mt),
+			r(mt),
+			r(mt),
+		};
 
-	lightData.pointLight[2].color = { 0.f,0.f,0.5f };
-	lightData.pointLight[2].pos = { 0.f,1.f,10.f };
-	lightData.pointLight[2].posInView = lightData.pointLight[2].pos;
-	pdx12::apply(lightData.pointLight[2].posInView, view);
-	lightData.pointLight[2].range = 10.f;
+		lightData.pointLight[i].pos = {
+			50.f - r(mt) * 100.f,
+			1.f,
+			50.f - r(mt) * 100.f
+		};
 
-	lightData.pointLight[3].color = { 0.5f,0.5f,0.f };
-	lightData.pointLight[3].pos = { -10.f,1.f,0.f };
-	lightData.pointLight[3].posInView = lightData.pointLight[3].pos;
-	pdx12::apply(lightData.pointLight[3].posInView, view);
-	lightData.pointLight[3].range = 10.f;
-
-	lightData.pointLight[4].color = { 0.f,0.5f,0.5f };
-	lightData.pointLight[4].pos = { -10.f,1.f,-10.f };
-	lightData.pointLight[4].posInView = lightData.pointLight[4].pos;
-	pdx12::apply(lightData.pointLight[4].posInView, view);
-	lightData.pointLight[4].range = 10.f;
-
-	lightData.pointLight[5].color = { 0.5f,0.f,0.5f };
-	lightData.pointLight[5].pos = { 0.f,1.f,-10.f };
-	lightData.pointLight[5].posInView = lightData.pointLight[5].pos;
-	pdx12::apply(lightData.pointLight[5].posInView, view);
-	lightData.pointLight[5].range = 10.f;
-
-	lightData.pointLight[6].color = { 1.f,0.f,0.0f };
-	lightData.pointLight[6].pos = { 0.f,1.f,50.f };
-	lightData.pointLight[6].posInView = lightData.pointLight[6].pos;
-	pdx12::apply(lightData.pointLight[6].posInView, view);
-	lightData.pointLight[6].range = 30.f;
-
-	lightData.pointLight[7].color = { 1.f,0.f,0.0f };
-	lightData.pointLight[7].pos = { 50.f,1.f,50.f };
-	lightData.pointLight[7].posInView = lightData.pointLight[7].pos;
-	pdx12::apply(lightData.pointLight[7].posInView, view);
-	lightData.pointLight[7].range = 50.f;
-
-	lightData.pointLightNum = 8;
+		lightData.pointLight[i].posInView = lightData.pointLight[i].pos;
+		pdx12::apply(lightData.pointLight[i].posInView, view);
+		lightData.pointLight[i].range = 2.f;
+	}
 
 	lightData.specPow = 100.f;
 
@@ -967,7 +943,7 @@ int main()
 
 		
 		cnt++;
-		eye = { 5.f * std::sin(cnt * 0.01f),2.f,3.f * std::cos(cnt * 0.01f) };
+		eye = { 10.f * std::sin(cnt * 0.01f),15.f,10.f * std::cos(cnt * 0.01f) };
 		view = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
 		proj = DirectX::XMMatrixPerspectiveFovLH(
 			VIEW_ANGLE,
@@ -1013,12 +989,12 @@ int main()
 			lightData.directionLightViewProj[i] = lightViewProj * clop;
 		}
 		
-		lightData.pointLight[0].posInView = lightData.pointLight[0].pos;
-		pdx12::apply(lightData.pointLight[0].posInView, view);
-		lightData.pointLight[1].posInView = lightData.pointLight[1].pos;
-		pdx12::apply(lightData.pointLight[1].posInView, view);
-		lightData.pointLight[2].posInView = lightData.pointLight[2].pos;
-		pdx12::apply(lightData.pointLight[2].posInView, view);
+
+		for (std::size_t i = 0; i < lightData.pointLightNum; i++)
+		{
+			lightData.pointLight[i].posInView = lightData.pointLight[i].pos;
+			pdx12::apply(lightData.pointLight[i].posInView, view);
+		}
 		
 		*mappedCameraDataPtr = cameraData;
 		*mappedLightDataPtr = lightData;
@@ -1262,6 +1238,7 @@ int main()
 			for (std::size_t i = 0; i < SHRINKED_MAIN_COLOR_RESOURCE_NUM; i++)
 				pdx12::resource_barrior(commandManager.get_list(), shrinkedMainColorResource[i], D3D12_RESOURCE_STATE_COMMON);
 		}
+
 
 		//
 		//ポストエフェクトをかけフレームバッファに描画

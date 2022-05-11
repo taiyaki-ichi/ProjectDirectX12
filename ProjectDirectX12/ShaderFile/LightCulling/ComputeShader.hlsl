@@ -36,8 +36,8 @@ groupshared uint tileLightNum;
 void GetTileFrustumPlane(out float4 frustumPlanes[6], uint3 groupID)
 {
 	//タイルの最大最小深度を浮動小数点に変換
-	float minTileZ = asfloat(minZ);
-	float maxTileZ = asfloat(maxZ);
+	float minTileZ = 0; asfloat(minZ);
+	float maxTileZ = 0x7F7FFFFF; asfloat(maxZ);
 
 	float2 tileScale = float2(cameraData.screenWidth, cameraData.screenHeight) * rcp(float2(2 * TILE_WIDTH, 2 * TILE_HEIGHT));
 	float2 tileBias = tileScale - float2(groupID.xy);
@@ -77,7 +77,7 @@ float3 ComputePositionInCamera(uint2 globalCoords)
 
 	float3 screenPos;
 	screenPos.xy = st.xy;
-	screenPos.z = depthBuffer.SampleLevel(smp, globalCoords, 0);
+	screenPos.z = depthBuffer.SampleLevel(smp, st, 0);
 	float4 cameraPos = mul(cameraData.projInv, float4(screenPos, 1.f));
 
 	return cameraPos.xyz / cameraPos.w;
@@ -104,6 +104,7 @@ void main(uint3 groupID : SV_GroupID, uint3 dispatchThreadID : SV_DispatchThread
 	uint tileIndex = floor(frameUV.x / TILE_WIDTH) + floor(frameUV.y / TILE_HEIGHT) * numCellX;
 	uint lightStart = lightData.pointLightNum * tileIndex;
 
+	/*
 	//結果を格納するバッファの初期化
 	//ClearUnorderedAccessViewUintってコマンドがあるけど
 	//アップロード用の別のバッファをつくらなければ使えないっぽく
@@ -112,6 +113,7 @@ void main(uint3 groupID : SV_GroupID, uint3 dispatchThreadID : SV_DispatchThread
 	{
 		pointLightIndexBuffer[lightStart + lightIndex] = 0xffffffff;
 	}
+	*/
 
 	//ビュー空間での座標
 	float3 posInView = ComputePositionInCamera(frameUV);
@@ -121,6 +123,7 @@ void main(uint3 groupID : SV_GroupID, uint3 dispatchThreadID : SV_DispatchThread
 
 
 	//タイルの最大最小深度を求める
+	//floatを直接扱うことはできないっぽい
 	InterlockedMin(minZ, asuint(posInView.z));
 	InterlockedMax(maxZ, asuint(posInView.z));
 
@@ -142,12 +145,14 @@ void main(uint3 groupID : SV_GroupID, uint3 dispatchThreadID : SV_DispatchThread
 		for (uint i = 0; i < 6; i++)
 		{
 			float4 lp = float4(pointLight.posInView, 1.f);
+			//float4 lp = float4(mul(cameraData.view, float4(pointLight.pos.xyz, 1.f)).xyz, 1.f);
 			float d = dot(frustumPlanes[i], lp);
 			isHit = isHit && (d >= -pointLight.range);
 		}
 		
 		//タイルと接触している場合
 		if (isHit)
+		//if(true)
 		{
 			uint listIndex = 0;
 			//tileLightNumに1を加算
@@ -166,5 +171,20 @@ void main(uint3 groupID : SV_GroupID, uint3 dispatchThreadID : SV_DispatchThread
 	{
 		pointLightIndexBuffer[lightStart + lightIndex] = tileLightIndex[lightIndex];
 	}
+
+	
+	//番兵
+	if ((groupIndex == 0) && (tileLightNum < lightData.pointLightNum))
+	{
+		pointLightIndexBuffer[lightStart + tileLightNum] = 0xffffffff;
+	}
+	
+
+	/*
+	if (lightStart % 8 == 0)
+	{
+		pointLightIndexBuffer[lightStart] = 13;
+	}
+	*/
 
 }

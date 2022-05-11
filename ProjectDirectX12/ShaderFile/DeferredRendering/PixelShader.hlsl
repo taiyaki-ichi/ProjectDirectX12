@@ -43,6 +43,8 @@ float3 CalcPointLight(float2 uv,float3 worldPos,float3 normal,float3 toEye)
 	uint indexEnd = indexStart + lightData.pointLightNum;
 
 	float3 result = float3(0.f, 0.f, 0.f);
+
+
 	for (uint i = indexStart; i < indexEnd; i++)
 	{
 		uint pointLightIndex = pointLightIndexBuffer[i];
@@ -50,6 +52,13 @@ float3 CalcPointLight(float2 uv,float3 worldPos,float3 normal,float3 toEye)
 		{
 			break;
 		}
+		//return float4(1, 0, 0, 1);
+		//if (indexStart % 8 == 0)
+		//if (indexStart % 128 == 0)
+			//return float4(0, 0.5, 0, 1);
+		//if (pointLightIndex == 13)
+			//return float4(0, 0, 0.5, 1);
+		
 
 		float3 lightDir = normalize(worldPos.xyz - lightData.pointLight[pointLightIndex].pos.xyz);
 		float distance = length(worldPos.xyz - lightData.pointLight[pointLightIndex].pos.xyz);
@@ -59,9 +68,28 @@ float3 CalcPointLight(float2 uv,float3 worldPos,float3 normal,float3 toEye)
 
 		//affectの値を線形から変更する
 		//そしたらスぺきゅらの計算を行う
-		result += CalcDiffuse(lightDir, lightData.pointLight[pointLightIndex].color, normal) * affect;
+		if (affect > 0.f)
+			result += CalcDiffuse(lightDir, lightData.pointLight[pointLightIndex].color, normal) * affect;
 		//result += CalcSpecular(lightDir, lightData.pointLight[pointLightIndex].color, normal, toEye) * affect;
 	}
+	
+	//愚直ver
+	/*
+	for (uint i = 0; i < 500; i++)
+	{
+		float3 lightDir = normalize(worldPos.xyz - lightData.pointLight[i].pos.xyz);
+		float distance = length(worldPos.xyz - lightData.pointLight[i].pos.xyz);
+
+		//影響率
+		float affect = 1.f - min(1.f, distance / lightData.pointLight[i].range);
+
+		//affectの値を線形から変更する
+		//そしたらスぺきゅらの計算を行う
+		result += CalcDiffuse(lightDir, lightData.pointLight[i].color, normal) * affect;
+		//result += CalcSpecular(lightDir, lightData.pointLight[pointLightIndex].color, normal, toEye) * affect;
+	}
+	*/
+	
 
 	return result;
 }
