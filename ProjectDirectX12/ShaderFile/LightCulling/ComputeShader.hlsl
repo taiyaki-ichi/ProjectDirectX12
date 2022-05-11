@@ -55,9 +55,9 @@ void GetTileFrustumPlane(out float4 frustumPlanes[6], uint3 groupID)
 	//下の面の法線
 	frustumPlanes[3] = c4 + c2;
 	//奥の面の法線
-	frustumPlanes[4] = float4(0.f, 0.f, 1.f, -minTileZ);//この面は原点を通らないので第四成分が0ではない
+	frustumPlanes[4] = float4(0.f, 0.f, 1.f, -minTileZ);
 	//手前の面の法線
-	frustumPlanes[5] = float4(0.f, 0.f, -1.f, maxTileZ);//この面は原点を通らないので第四成分が0ではない
+	frustumPlanes[5] = float4(0.f, 0.f, -1.f, maxTileZ);
 
 	//正規化する
 	[unroll]
@@ -104,16 +104,6 @@ void main(uint3 groupID : SV_GroupID, uint3 dispatchThreadID : SV_DispatchThread
 	uint tileIndex = floor(frameUV.x / TILE_WIDTH) + floor(frameUV.y / TILE_HEIGHT) * numCellX;
 	uint lightStart = lightData.pointLightNum * tileIndex;
 
-	/*
-	//結果を格納するバッファの初期化
-	//ClearUnorderedAccessViewUintってコマンドがあるけど
-	//アップロード用の別のバッファをつくらなければ使えないっぽく
-	//手間かかりそうなのでここで初期化する
-	for (uint lightIndex = groupIndex; lightIndex < lightData.pointLightNum; lightIndex += TILE_NUM)
-	{
-		pointLightIndexBuffer[lightStart + lightIndex] = 0xffffffff;
-	}
-	*/
 
 	//ビュー空間での座標
 	float3 posInView = ComputePositionInCamera(frameUV);
@@ -145,7 +135,6 @@ void main(uint3 groupID : SV_GroupID, uint3 dispatchThreadID : SV_DispatchThread
 		for (uint i = 0; i < 6; i++)
 		{
 			float4 lp = float4(pointLight.posInView, 1.f);
-			//float4 lp = float4(mul(cameraData.view, float4(pointLight.pos.xyz, 1.f)).xyz, 1.f);
 			float d = dot(frustumPlanes[i], lp);
 			isHit = isHit && (d >= -pointLight.range);
 		}
@@ -178,13 +167,4 @@ void main(uint3 groupID : SV_GroupID, uint3 dispatchThreadID : SV_DispatchThread
 	{
 		pointLightIndexBuffer[lightStart + tileLightNum] = 0xffffffff;
 	}
-	
-
-	/*
-	if (lightStart % 8 == 0)
-	{
-		pointLightIndexBuffer[lightStart] = 13;
-	}
-	*/
-
 }
