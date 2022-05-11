@@ -100,7 +100,7 @@ void main(uint3 groupID : SV_GroupID, uint3 dispatchThreadID : SV_DispatchThread
 	}
 
 	uint2 frameUV = dispatchThreadID.xy;
-	uint numCellX = (cameraData.screenWidth + TILE_WIDTH - 1) / TILE_WIDTH;
+	uint numCellX = (cameraData.screenWidth + TILE_WIDTH) / TILE_WIDTH;
 	uint tileIndex = floor(frameUV.x / TILE_WIDTH) + floor(frameUV.y / TILE_HEIGHT) * numCellX;
 	uint lightStart = lightData.pointLightNum * tileIndex;
 

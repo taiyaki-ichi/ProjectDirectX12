@@ -115,8 +115,8 @@ int main()
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
 
-	constexpr std::size_t WINDOW_WIDTH = 850;
-	constexpr std::size_t WINDOW_HEIGHT = 700;
+	constexpr std::size_t WINDOW_WIDTH = 512;
+	constexpr std::size_t WINDOW_HEIGHT = 512;
 
 	constexpr float CAMERA_NEAR_Z = 0.01f;
 	constexpr float CAMERA_FAR_Z = 100.f;
