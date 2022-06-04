@@ -145,6 +145,7 @@
   <ItemGroup>
     <ClCompile Include="create_view.cpp" />
     <ClCompile Include="descriptor_heap.cpp" />
+    <ClCompile Include="device.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="utility.cpp" />
   </ItemGroup>
