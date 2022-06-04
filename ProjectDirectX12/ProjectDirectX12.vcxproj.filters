@@ -7,6 +7,7 @@
     <ClCompile Include="utility.cpp" />
     <ClCompile Include="device.cpp" />
     <ClCompile Include="pipeline_state.cpp" />
+    <ClCompile Include="resource.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="window.hpp" />
