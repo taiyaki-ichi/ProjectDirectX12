@@ -6,6 +6,7 @@
     <ClCompile Include="descriptor_heap.cpp" />
     <ClCompile Include="utility.cpp" />
     <ClCompile Include="device.cpp" />
+    <ClCompile Include="pipeline_state.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="window.hpp" />
