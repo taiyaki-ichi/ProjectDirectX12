@@ -8,6 +8,7 @@
 #include"shader.hpp"
 #include"resource.hpp"
 #include"pipeline_state.hpp"
+#include"Input/create_direct_input.hpp"
 #include"OBJ-Loader/Source/OBJ_Loader.h"
 #include<iostream>
 #include<random>
@@ -925,6 +926,13 @@ int main()
 		*mappedDownSamplingData = mainColorDownSamplingData;
 	}
 
+
+	//
+	//“ü—ÍŠÖŒW‚Ì‰Šú‰»
+	//
+
+	auto directInput = pdx12::create_direct_input();
+	
 
 	//
 	//ƒƒCƒ“ƒ‹[ƒv

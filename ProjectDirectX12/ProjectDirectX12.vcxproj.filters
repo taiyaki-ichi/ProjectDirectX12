@@ -12,6 +12,7 @@
     <ClCompile Include="shader.cpp" />
     <ClCompile Include="swap_chain.cpp" />
     <ClCompile Include="window.cpp" />
+    <ClCompile Include="Input\create_direct_input.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="window.hpp" />
@@ -25,6 +26,7 @@
     <ClInclude Include="shader.hpp" />
     <ClInclude Include="resource.hpp" />
     <ClInclude Include="pipeline_state.hpp" />
+    <ClInclude Include="Input\create_direct_input.hpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ShaderFile\SimpleModel\VertexShader.hlsl" />

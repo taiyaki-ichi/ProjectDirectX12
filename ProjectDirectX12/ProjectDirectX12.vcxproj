@@ -146,6 +146,7 @@
     <ClCompile Include="create_view.cpp" />
     <ClCompile Include="descriptor_heap.cpp" />
     <ClCompile Include="device.cpp" />
+    <ClCompile Include="Input\create_direct_input.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="pipeline_state.cpp" />
     <ClCompile Include="resource.cpp" />
@@ -160,6 +161,7 @@
     <ClInclude Include="create_view.hpp" />
     <ClInclude Include="descriptor_heap.hpp" />
     <ClInclude Include="device.hpp" />
+    <ClInclude Include="Input\create_direct_input.hpp" />
     <ClInclude Include="pipeline_state.hpp" />
     <ClInclude Include="resource.hpp" />
     <ClInclude Include="root_signature.hpp" />
