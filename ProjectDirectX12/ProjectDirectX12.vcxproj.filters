@@ -13,6 +13,7 @@
     <ClCompile Include="swap_chain.cpp" />
     <ClCompile Include="window.cpp" />
     <ClCompile Include="Input\create_direct_input.cpp" />
+    <ClCompile Include="Input\keyboard_device.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="window.hpp" />
@@ -27,6 +28,8 @@
     <ClInclude Include="resource.hpp" />
     <ClInclude Include="pipeline_state.hpp" />
     <ClInclude Include="Input\create_direct_input.hpp" />
+    <ClInclude Include="Input\keyboard_device.hpp" />
+    <ClInclude Include="Input\button_state.hpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ShaderFile\SimpleModel\VertexShader.hlsl" />
