@@ -143,7 +143,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="create_view.cpp" />
+    <ClCompile Include="descriptor_heap.cpp" />
+    <ClCompile Include="device.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="pipeline_state.cpp" />
+    <ClCompile Include="resource.cpp" />
+    <ClCompile Include="root_signature.cpp" />
+    <ClCompile Include="shader.cpp" />
+    <ClCompile Include="swap_chain.cpp" />
+    <ClCompile Include="utility.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="command_manager.hpp" />
