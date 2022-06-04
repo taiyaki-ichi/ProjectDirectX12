@@ -153,6 +153,7 @@
     <ClCompile Include="shader.cpp" />
     <ClCompile Include="swap_chain.cpp" />
     <ClCompile Include="utility.cpp" />
+    <ClCompile Include="window.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="command_manager.hpp" />
