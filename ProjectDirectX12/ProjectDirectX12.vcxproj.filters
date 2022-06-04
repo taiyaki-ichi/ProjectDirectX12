@@ -10,6 +10,7 @@
     <ClCompile Include="resource.cpp" />
     <ClCompile Include="root_signature.cpp" />
     <ClCompile Include="shader.cpp" />
+    <ClCompile Include="swap_chain.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="window.hpp" />
