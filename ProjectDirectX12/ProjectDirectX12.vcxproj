@@ -149,6 +149,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="pipeline_state.cpp" />
     <ClCompile Include="resource.cpp" />
+    <ClCompile Include="root_signature.cpp" />
     <ClCompile Include="utility.cpp" />
   </ItemGroup>
   <ItemGroup>
