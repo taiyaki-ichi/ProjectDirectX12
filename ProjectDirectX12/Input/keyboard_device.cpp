@@ -8,31 +8,31 @@ namespace pdx12
 {
 	void keyboard_device::initialize(IDirectInput8W* directInput, HWND hwnd)
 	{
-		if (FAILED(directInput->CreateDevice(GUID_SysKeyboard, &m_keyboard_device, NULL)))
+		if (FAILED(directInput->CreateDevice(GUID_SysKeyboard, &m_device, NULL)))
 		{
 			THROW_PDX12_EXCEPTION("failed keyboard_device::initialize CreateDevice");
 		}
 
 		// デバイスのフォーマットの設定
-		if (FAILED(m_keyboard_device->SetDataFormat(&c_dfDIKeyboard)))
+		if (FAILED(m_device->SetDataFormat(&c_dfDIKeyboard)))
 		{
 			THROW_PDX12_EXCEPTION("failed keyboard_device::initialize SetDataFormat");
 		}
 
 		// 協調モードの設定
-		if (FAILED(m_keyboard_device->SetCooperativeLevel(hwnd, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE)))
+		if (FAILED(m_device->SetCooperativeLevel(hwnd, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE)))
 		{
 			THROW_PDX12_EXCEPTION("failed keyboard_device::initialize SetCooperativeLevel");
 		}
 
 		// デバイスの取得開始
-		if (FAILED(m_keyboard_device->Acquire()))
+		if (FAILED(m_device->Acquire()))
 		{
 			THROW_PDX12_EXCEPTION("failed keyboard_device::initialize Acquire");
 		}
 
 		//初期化
-		m_keyboard_device->GetDeviceState(256, m_curr_state.data());
+		m_device->GetDeviceState(256, m_curr_state.data());
 		std::copy(m_curr_state.begin(), m_curr_state.end(), m_prev_state.begin());
 	}
 
@@ -57,6 +57,6 @@ namespace pdx12
 	void keyboard_device::update()
 	{
 		std::copy(m_curr_state.begin(), m_curr_state.end(), m_prev_state.begin());
-		m_keyboard_device->GetDeviceState(256, m_curr_state.data());
+		m_device->GetDeviceState(256, m_curr_state.data());
 	}
 }

@@ -10,6 +10,7 @@
 #include"pipeline_state.hpp"
 #include"Input/create_direct_input.hpp"
 #include"Input/keyboard_device.hpp"
+#include"Input/mouse_device.hpp"
 #include"OBJ-Loader/Source/OBJ_Loader.h"
 #include<iostream>
 #include<random>
@@ -936,6 +937,9 @@ int main()
 
 	pdx12::keyboard_device keyboard{};
 	keyboard.initialize(directInput.get(), hwnd);
+
+	pdx12::mouse_device mouse{};
+	mouse.initialize(directInput.get(), hwnd);
 	
 
 	//
@@ -950,6 +954,7 @@ int main()
 		//
 
 		keyboard.update();
+		mouse.update();
 
 		for (std::size_t i = 0; i < MODEL_NUM; i++)
 			modelData.world[i] *= XMMatrixTranslation(0.f, 0.f, -4.f * i + 2.f) * XMMatrixRotationY(0.01f) * XMMatrixTranslation(0.f, 0.f, 4.f * i - 2.f);
@@ -988,8 +993,15 @@ int main()
 			eye.y -= right.y / 50.f;
 			eye.z -= right.z / 50.f;
 		}
-
 		view = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
+
+		{
+			XMMATRIX forward{};
+			auto f = XMLoadFloat3(&cameraForward);
+			view *= XMMatrixRotationRollPitchYaw(mouse.get_pos().second / 200.f, mouse.get_pos().first / 200.f, 0.f);
+		}
+
+
 		proj = DirectX::XMMatrixPerspectiveFovLH(
 			VIEW_ANGLE,
 			asspect,

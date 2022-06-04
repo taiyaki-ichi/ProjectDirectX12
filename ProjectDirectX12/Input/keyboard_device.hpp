@@ -70,7 +70,7 @@ namespace pdx12
 
 	class keyboard_device
 	{
-		LPDIRECTINPUTDEVICE8 m_keyboard_device = nullptr;
+		LPDIRECTINPUTDEVICE8 m_device = nullptr;
 
 		std::array<unsigned char, 256> m_curr_state{};
 		std::array<unsigned char, 256> m_prev_state{};
