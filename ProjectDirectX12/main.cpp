@@ -11,6 +11,7 @@
 #include"Input/create_direct_input.hpp"
 #include"Input/keyboard_device.hpp"
 #include"Input/mouse_device.hpp"
+#include"Input/gamepad_device.hpp"
 #include"OBJ-Loader/Source/OBJ_Loader.h"
 #include<iostream>
 #include<random>
@@ -940,6 +941,9 @@ int main()
 
 	pdx12::mouse_device mouse{};
 	mouse.initialize(directInput.get(), hwnd);
+
+	pdx12::gamepad_device gamepad{};
+	gamepad.initialize(directInput.get(), hwnd);
 	
 
 	//
@@ -998,7 +1002,12 @@ int main()
 		{
 			XMMATRIX forward{};
 			auto f = XMLoadFloat3(&cameraForward);
-			view *= XMMatrixRotationRollPitchYaw(mouse.get_pos().second / 200.f, mouse.get_pos().first / 200.f, 0.f);
+			//view *= XMMatrixRotationRollPitchYaw(mouse.get_pos().second / 200.f, mouse.get_pos().first / 200.f, 0.f);
+
+			// ゲームパッドの入力情報取得
+			auto padData = gamepad.get_state();
+			view *= XMMatrixRotationRollPitchYaw(padData.lY / 2000.f, padData.lX / 2000.f, 0.f);
+
 		}
 
 

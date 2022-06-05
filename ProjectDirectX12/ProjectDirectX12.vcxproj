@@ -147,6 +147,7 @@
     <ClCompile Include="descriptor_heap.cpp" />
     <ClCompile Include="device.cpp" />
     <ClCompile Include="Input\create_direct_input.cpp" />
+    <ClCompile Include="Input\gamepad_device.cpp" />
     <ClCompile Include="Input\keyboard_device.cpp" />
     <ClCompile Include="Input\mouse_device.cpp" />
     <ClCompile Include="main.cpp" />
@@ -165,6 +166,7 @@
     <ClInclude Include="device.hpp" />
     <ClInclude Include="Input\button_state.hpp" />
     <ClInclude Include="Input\create_direct_input.hpp" />
+    <ClInclude Include="Input\gamepad_device.hpp" />
     <ClInclude Include="Input\keyboard_device.hpp" />
     <ClInclude Include="Input\mouse_device.hpp" />
     <ClInclude Include="pipeline_state.hpp" />

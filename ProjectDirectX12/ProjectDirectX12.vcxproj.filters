@@ -15,6 +15,7 @@
     <ClCompile Include="Input\create_direct_input.cpp" />
     <ClCompile Include="Input\keyboard_device.cpp" />
     <ClCompile Include="Input\mouse_device.cpp" />
+    <ClCompile Include="Input\gamepad_device.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="window.hpp" />
@@ -32,6 +33,7 @@
     <ClInclude Include="Input\keyboard_device.hpp" />
     <ClInclude Include="Input\button_state.hpp" />
     <ClInclude Include="Input\mouse_device.hpp" />
+    <ClInclude Include="Input\gamepad_device.hpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ShaderFile\SimpleModel\VertexShader.hlsl" />
