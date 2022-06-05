@@ -1006,7 +1006,7 @@ int main()
 
 			// ゲームパッドの入力情報取得
 			auto padData = gamepad.get_state();
-			view *= XMMatrixRotationRollPitchYaw(padData.lY / 2000.f, padData.lX / 2000.f, 0.f);
+			view *= XMMatrixRotationRollPitchYaw(padData.lRz / 2000.f, padData.lZ / 2000.f, 0.f);
 
 		}
 

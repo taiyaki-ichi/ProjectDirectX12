@@ -62,25 +62,33 @@ namespace pdx12
 			THROW_PDX12_EXCEPTION("failed gamepad_device::initialize SetProperty");
 		}
 
-		// X軸の値の範囲設定
 		DIPROPRANGE diprg{};
 		diprg.diph.dwSize = sizeof(diprg);
 		diprg.diph.dwHeaderSize = sizeof(diprg.diph);
 		diprg.diph.dwHow = DIPH_BYOFFSET;
-		diprg.diph.dwObj = DIJOFS_X;
 		diprg.lMin = -1000;
 		diprg.lMax = 1000;
-		if (FAILED(m_device->SetProperty(DIPROP_RANGE, &diprg.diph)))
-		{
-			THROW_PDX12_EXCEPTION("failed gamepad_device::initialize SetProperty");
-		}
 
-		// Y軸の値の範囲設定
+		//それぞれの軸の設定
+		//接続するコントローラによっていろいろ違う見たい
+		diprg.diph.dwObj = DIJOFS_X;
+		m_device->SetProperty(DIPROP_RANGE, &diprg.diph);
+
 		diprg.diph.dwObj = DIJOFS_Y;
-		if (FAILED(m_device->SetProperty(DIPROP_RANGE, &diprg.diph)))
-		{
-			THROW_PDX12_EXCEPTION("failed gamepad_device::initialize SetProperty");
-		}
+		m_device->SetProperty(DIPROP_RANGE, &diprg.diph);
+
+		diprg.diph.dwObj = DIJOFS_Z;
+		m_device->SetProperty(DIPROP_RANGE, &diprg.diph);
+
+		diprg.diph.dwObj = DIJOFS_RX;
+		m_device->SetProperty(DIPROP_RANGE, &diprg.diph);
+
+		diprg.diph.dwObj = DIJOFS_RY;
+		m_device->SetProperty(DIPROP_RANGE, &diprg.diph);
+
+		diprg.diph.dwObj = DIJOFS_RZ;
+		m_device->SetProperty(DIPROP_RANGE, &diprg.diph);
+
 
 		//制御開始
 		if (FAILED(m_device->Acquire()))
