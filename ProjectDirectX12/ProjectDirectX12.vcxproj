@@ -174,6 +174,7 @@
     <ClInclude Include="root_signature.hpp" />
     <ClInclude Include="shader.hpp" />
     <ClInclude Include="swap_chain.hpp" />
+    <ClInclude Include="TPS.hpp" />
     <ClInclude Include="utility.hpp" />
     <ClInclude Include="window.hpp" />
   </ItemGroup>

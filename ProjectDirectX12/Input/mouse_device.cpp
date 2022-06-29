@@ -39,7 +39,8 @@ namespace pdx12
 
 			if (count >= MAX_CNT)
 			{
-				THROW_PDX12_EXCEPTION("failed mouse_device::initialize start_mouse_control");
+				//THROW_PDX12_EXCEPTION("failed mouse_device::initialize start_mouse_control");
+				break;
 			}
 		}
 

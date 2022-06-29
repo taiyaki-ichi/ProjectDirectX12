@@ -34,6 +34,7 @@
     <ClInclude Include="Input\button_state.hpp" />
     <ClInclude Include="Input\mouse_device.hpp" />
     <ClInclude Include="Input\gamepad_device.hpp" />
+    <ClInclude Include="TPS.hpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ShaderFile\SimpleModel\VertexShader.hlsl" />

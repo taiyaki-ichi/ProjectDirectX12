@@ -12,6 +12,7 @@
 #include"Input/keyboard_device.hpp"
 #include"Input/mouse_device.hpp"
 #include"Input/gamepad_device.hpp"
+#include"TPS.hpp"
 #include"OBJ-Loader/Source/OBJ_Loader.h"
 #include<iostream>
 #include<random>
@@ -943,8 +944,28 @@ int main()
 	mouse.initialize(directInput.get(), hwnd);
 
 	pdx12::gamepad_device gamepad{};
-	gamepad.initialize(directInput.get(), hwnd);
+
+	bool success = false;
+	while (!success)
+	{
+		success = true;
+		try {
+			gamepad.initialize(directInput.get(), hwnd);
+		}
+		catch (std::runtime_error&)
+		{
+			success = false;
+		}
+	}
 	
+
+	//
+	//
+	//
+
+	pdx12::TPS tps{};
+	tps.eyeRadius = 5.f;
+	tps.eyeHeight = 5.f;
 
 	//
 	//メインループ
@@ -967,49 +988,27 @@ int main()
 		
 		cnt++;
 
-		cameraForward = { target.x - eye.x,target.y - eye.y, target.z - eye.z };
+		//cameraForward = { target.x - eye.x,target.y - eye.y, target.z - eye.z };
 
 		auto inv = XMMatrixInverse(nullptr, view * proj);
 		XMFLOAT3 right{ inv.r[0].m128_f32[0],inv.r[0].m128_f32[1] ,inv.r[0].m128_f32[2] };
 
-		//eye = { 10.f * std::sin(cnt * 0.01f),15.f,10.f * std::cos(cnt * 0.01f) };
-		if (keyboard.get_key_state(pdx12::key_type::W) == pdx12::button_state::Held)
 		{
-			eye.x += cameraForward.x / 100.f;
-			eye.y += cameraForward.y / 100.f;
-			eye.z += cameraForward.z / 100.f;
-		}
-		if (keyboard.get_key_state(pdx12::key_type::S) == pdx12::button_state::Held)
-		{
-			eye.x -= cameraForward.x / 100.f;
-			eye.y -= cameraForward.y / 100.f;
-			eye.z -= cameraForward.z / 100.f;
-		}
-		if (keyboard.get_key_state(pdx12::key_type::D) == pdx12::button_state::Held)
-		{
-			eye.x += right.x / 50.f;
-			eye.y += right.y / 50.f;
-			eye.z += right.z / 50.f;
-		}
-		if (keyboard.get_key_state(pdx12::key_type::A) == pdx12::button_state::Held)
-		{
-			eye.x -= right.x / 50.f;
-			eye.y -= right.y / 50.f;
-			eye.z -= right.z / 50.f;
-		}
-		view = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
-
-		{
-			XMMATRIX forward{};
-			auto f = XMLoadFloat3(&cameraForward);
-			//view *= XMMatrixRotationRollPitchYaw(mouse.get_pos().second / 200.f, mouse.get_pos().first / 200.f, 0.f);
-
 			// ゲームパッドの入力情報取得
 			auto padData = gamepad.get_state();
-			view *= XMMatrixRotationRollPitchYaw(padData.lRz / 2000.f, padData.lZ / 2000.f, 0.f);
+			/*
+			tps.target.x -= padData.lY / 2000.f;
+			tps.target.z -= padData.lX / 2000.f;
+			tps.eyeRotation -= padData.lZ / 2000.f;
+			*/
+			pdx12::UpdateTPS(tps, padData.lY / 2000.f, padData.lX / 2000.f, -padData.lZ / 2000.f);
 
+			eye = pdx12::GetEye(tps);
+			target = tps.target;
 		}
 
+		
+		view = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
 
 		proj = DirectX::XMMatrixPerspectiveFovLH(
 			VIEW_ANGLE,
