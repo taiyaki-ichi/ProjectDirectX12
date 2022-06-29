@@ -775,42 +775,14 @@ int main()
 	XMFLOAT3 target{ 0,0,0 };
 	XMFLOAT3 up{ 0,1,0 };
 	float asspect = static_cast<float>(WINDOW_WIDTH) / static_cast<float>(WINDOW_HEIGHT);
-	auto view = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
-	auto proj = DirectX::XMMatrixPerspectiveFovLH(
-		VIEW_ANGLE,
-		asspect,
-		CAMERA_NEAR_Z,
-		CAMERA_FAR_Z
-	);
+
 	XMFLOAT3 lightColor{ 0.4f,0.4f,0.4f };
 	XMFLOAT3 lightDir{ 0.f,-0.5f,-0.5f };
 
-	auto inv = XMMatrixInverse(nullptr, view * proj);
-	XMFLOAT3 right{ inv.r[0].m128_f32[0],inv.r[0].m128_f32[1] ,inv.r[0].m128_f32[2] };
-
-	XMFLOAT3 cameraForward = { target.x - eye.x,target.y - eye.y, target.z - eye.z };
-
-	//posは原点でいいっぽい
-	auto lightPosVector = XMLoadFloat3(&target) - XMVector3Normalize(XMLoadFloat3(&lightDir))
-		* XMVector3Length(XMVectorSubtract(XMLoadFloat3(&target), XMLoadFloat3(&eye))).m128_f32[0];
-	XMFLOAT3 lightPos{ 0,0,0 };
-	XMStoreFloat3(&lightPos, lightPosVector);
-
-	XMMATRIX lightViewProj = XMMatrixLookAtLH(lightPosVector, XMLoadFloat3(&target), XMLoadFloat3(&up)) * XMMatrixOrthographicLH(1024, 1024, -100.f, 200.f);
-
-	CameraData cameraData{};
-	cameraData.view = view;
-	cameraData.viewInv = XMMatrixInverse(nullptr, cameraData.view);
-	cameraData.proj = proj;
-	cameraData.projInv = XMMatrixInverse(nullptr, cameraData.proj);
-	cameraData.viewProj = view * proj;
-	cameraData.viewProjInv = XMMatrixInverse(nullptr, cameraData.viewProj);
-	cameraData.cameraNear = CAMERA_NEAR_Z;
-	cameraData.cameraFar = CAMERA_FAR_Z;
-	cameraData.screenWidth = WINDOW_WIDTH;
-	cameraData.screenHeight = WINDOW_HEIGHT;
-	cameraData.eyePos = eye;
-
+	pdx12::TPS tps{};
+	tps.eyeRadius = 5.f;
+	tps.eyeHeight = 5.f;
+	
 	LightData lightData{};
 	lightData.directionLight.dir = lightDir;
 	lightData.directionLight.color = lightColor;
@@ -835,13 +807,10 @@ int main()
 			50.f - r(mt) * 100.f
 		};
 
-		lightData.pointLight[i].posInView = lightData.pointLight[i].pos;
-		pdx12::apply(lightData.pointLight[i].posInView, view);
 		lightData.pointLight[i].range = 2.f;
 	}
 
 	lightData.specPow = 100.f;
-
 
 	PostEffectData posEffectData{
 		{0.5f,0.5f},
@@ -875,28 +844,6 @@ int main()
 	PostEffectData* mappedPostEffectData = nullptr;
 	postEffectDataResource.first->Map(0, nullptr, reinterpret_cast<void**>(&mappedPostEffectData));
 	*mappedPostEffectData = posEffectData;
-
-
-	for (std::size_t i = 0; i < LIGHT_VIEW_PROJ_MATRIX_NUM; i++)
-	{
-		XMMATRIX* mappedLightViewProj = nullptr;
-		lightViewProjMatrixResource[i].first->Map(0, nullptr, reinterpret_cast<void**>(&mappedLightViewProj));
-
-		std::array<XMFLOAT3, 8> vertex{};
-		pdx12::get_frustum_vertex(eye, asspect, CAMERA_NEAR_Z, SHADOW_MAP_AREA_TABLE[i], VIEW_ANGLE, cameraForward, right, vertex);
-
-		for (std::size_t j = 0; j < vertex.size(); j++)
-			pdx12::apply(vertex[j], lightViewProj);
-
-		XMMATRIX clop{};
-		pdx12::get_clop_matrix(vertex, clop);
-		*mappedLightViewProj = lightViewProj * clop;
-
-		lightData.directionLightViewProj[i] = lightViewProj * clop;
-
-		for (std::size_t j = 0; j < vertex.size(); j++)
-			pdx12::apply(vertex[j], clop);
-	}
 
 	//高輝度をダウンサンプリングする際に使用する定数バッファに渡すデータ
 	DownSamplingData highLuminanceDownSamplingData{};
@@ -957,15 +904,6 @@ int main()
 			success = false;
 		}
 	}
-	
-
-	//
-	//
-	//
-
-	pdx12::TPS tps{};
-	tps.eyeRadius = 5.f;
-	tps.eyeHeight = 5.f;
 
 	//
 	//メインループ
@@ -988,19 +926,9 @@ int main()
 		
 		cnt++;
 
-		//cameraForward = { target.x - eye.x,target.y - eye.y, target.z - eye.z };
-
-		auto inv = XMMatrixInverse(nullptr, view * proj);
-		XMFLOAT3 right{ inv.r[0].m128_f32[0],inv.r[0].m128_f32[1] ,inv.r[0].m128_f32[2] };
-
 		{
 			// ゲームパッドの入力情報取得
 			auto padData = gamepad.get_state();
-			/*
-			tps.target.x -= padData.lY / 2000.f;
-			tps.target.z -= padData.lX / 2000.f;
-			tps.eyeRotation -= padData.lZ / 2000.f;
-			*/
 			pdx12::UpdateTPS(tps, padData.lY / 2000.f, padData.lX / 2000.f, -padData.lZ / 2000.f);
 
 			eye = pdx12::GetEye(tps);
@@ -1008,21 +936,24 @@ int main()
 		}
 
 		
-		view = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
+		auto view = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
 
-		proj = DirectX::XMMatrixPerspectiveFovLH(
+		auto proj = DirectX::XMMatrixPerspectiveFovLH(
 			VIEW_ANGLE,
 			asspect,
 			CAMERA_NEAR_Z,
 			CAMERA_FAR_Z
 		);
+		auto inv = XMMatrixInverse(nullptr, view * proj);
+		XMFLOAT3 right{ inv.r[0].m128_f32[0],inv.r[0].m128_f32[1] ,inv.r[0].m128_f32[2] };
 
-		lightPosVector = XMLoadFloat3(&target) - XMVector3Normalize(XMLoadFloat3(&lightDir))
+		auto lightPosVector = XMLoadFloat3(&target) - XMVector3Normalize(XMLoadFloat3(&lightDir))
 			* XMVector3Length(XMVectorSubtract(XMLoadFloat3(&target), XMLoadFloat3(&eye))).m128_f32[0];
 		XMFLOAT3 lightPos{};
 		XMStoreFloat3(&lightPos, lightPosVector);
-		lightViewProj = XMMatrixLookAtLH(lightPosVector, XMLoadFloat3(&target), XMLoadFloat3(&up)) * XMMatrixOrthographicLH(100, 100, -100.f, 200.f);
+		auto lightViewProj = XMMatrixLookAtLH(lightPosVector, XMLoadFloat3(&target), XMLoadFloat3(&up)) * XMMatrixOrthographicLH(100, 100, -100.f, 200.f);
 		
+		CameraData cameraData{};
 		cameraData.view = view;
 		cameraData.viewInv = XMMatrixInverse(nullptr, cameraData.view);
 		cameraData.proj = proj;
@@ -1044,6 +975,7 @@ int main()
 			lightViewProjMatrixResource[i].first->Map(0, nullptr, reinterpret_cast<void**>(&mappedLightViewProj));
 
 			std::array<XMFLOAT3, 8> vertex{};
+			XMFLOAT3 cameraForward = { target.x - eye.x,target.y - eye.y, target.z - eye.z };
 			pdx12::get_frustum_vertex(eye, asspect, CAMERA_NEAR_Z, SHADOW_MAP_AREA_TABLE[i], VIEW_ANGLE, cameraForward, right, vertex);
 			for (std::size_t j = 0; j < vertex.size(); j++)
 				pdx12::apply(vertex[j], lightViewProj);
