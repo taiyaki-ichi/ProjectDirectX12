@@ -104,7 +104,7 @@ PSOutput main(VSOutput input)
 			{
 				float shadowMapValue = shadowMap[i].Sample(smp, shadowMapUV);
 
-				if (z >= shadowMapValue + 0.0001f)
+				if (z >= shadowMapValue + 0.001f)
 				{
 					output.color *= 0.8f;	
 				}

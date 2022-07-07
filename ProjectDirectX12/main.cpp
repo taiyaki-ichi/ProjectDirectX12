@@ -186,9 +186,9 @@ int main()
 	//カスケードシャドウマップのサイズ
 	//近い順
 	constexpr std::array<std::size_t, SHADOW_MAP_NUM> SHADOW_MAP_SIZE = {
-		2048,
-		2048,
-		2048,
+		4096,
+		4096,
+		4096,
 	};
 
 	//シャドウマップの距離テーブル
