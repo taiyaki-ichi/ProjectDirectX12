@@ -16,6 +16,7 @@
 #include"OBJ-Loader/Source/OBJ_Loader.h"
 #include<iostream>
 #include<random>
+#include<chrono>
 #include<DirectXMath.h>
 
 #ifdef _DEBUG
@@ -921,12 +922,21 @@ int main()
 	//メインループ
 	//
 
+	auto start = std::chrono::system_clock::now();
 	std::size_t cnt = 0;
 	while (pdx12::update_window())
 	{
 		//
 		//更新
 		//
+
+		if (cnt % 100 == 0)
+		{
+			auto end = std::chrono::system_clock::now();
+			auto time = end - start;
+			std::cout << "fps: " << 100.f / (static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(time).count()) / 1000.f) << std::endl;
+			start = std::chrono::system_clock::now();
+		}
 
 		keyboard.update();
 		mouse.update();
