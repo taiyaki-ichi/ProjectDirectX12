@@ -501,8 +501,8 @@ int main()
 	//ディファードレンダリングを行う際に利用するSRVなどを作成する用のデスクリプタヒープ
 	pdx12::descriptor_heap defferredRenderingDescriptorHeapCBVSRVUAV{};
 	{
-		//カメラのデータ、ライトのデータ、アルベドカラー、法線、ワールド座標、シャドウマップ、ポイントライトインデックス
-		defferredRenderingDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 5 + SHADOW_MAP_NUM + 1);
+		//カメラのデータ、ライトのデータ、アルベドカラー、法線、ワールド座標、デプス、シャドウマップ、ポイントライトインデックス
+		defferredRenderingDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 6 + SHADOW_MAP_NUM + 1);
 
 		//CameraData
 		pdx12::create_CBV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(0),
@@ -524,14 +524,18 @@ int main()
 		pdx12::create_texture2D_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(4),
 			gBufferWorldPositionResource.first.get(), G_BUFFER_WORLD_POSITION_FORMAT, 1, 0, 0, 0.f);
 
+		//デプス
+		pdx12::create_texture2D_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(5),
+			depthBuffer.first.get(), DEPTH_BUFFER_SRV_FORMAT, 1, 0, 0, 0.f);
+
 		//シャドウマップ
 		for (std::size_t i = 0; i < SHADOW_MAP_NUM; i++)
-			pdx12::create_texture2D_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(5 + i),
+			pdx12::create_texture2D_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(6 + i),
 				shadowMapResource[i].first.get(), SHADOW_MAP_SRV_FORMAT, 1, 0, 0, 0.f);
 
 		//ポイントライトインデックス
 		//FormatはUnknownじゃあないとダメだって
-		pdx12::create_buffer_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(5 + SHADOW_MAP_NUM),
+		pdx12::create_buffer_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(6 + SHADOW_MAP_NUM),
 			pointLightIndexResource.first.get(), MAX_POINT_LIGHT_NUM * LIGHT_CULLING_TILE_NUM, sizeof(int), 0, D3D12_BUFFER_SRV_FLAG_NONE);
 
 	}
@@ -729,7 +733,7 @@ int main()
 
 
 	auto deferredRenderingRootSignature = pdx12::create_root_signature(device.get(),
-		{ {{/*CameraData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*LightData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*GBuffer アルベドカラー、法線、ワールド座標の順*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,3},
+		{ {{/*CameraData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*LightData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*アルベドカラー、法線、ワールド座標、デプスバッファの順*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,4},
 		{/*シャドウマップ*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,SHADOW_MAP_NUM},{/*ポイントライトのインデックスのリスト*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV}} },
 		{ { D3D12_FILTER_MIN_MAG_MIP_LINEAR ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP,D3D12_COMPARISON_FUNC_NEVER} });
 

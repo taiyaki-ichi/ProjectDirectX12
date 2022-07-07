@@ -74,6 +74,14 @@ PSOutput main(VSOutput input)
 	PSOutput output;
 
 	float4 albedoColor = albedoColorTexture.Sample(smp,input.uv);
+
+	if (depthBuffer.Sample(smp, input.uv) >= 1.f)
+	{
+		output.color = albedoColor;
+		output.highLuminance = float4(0.f, 0.f, 0.f, 0.f);
+		return output;
+	}
+
 	float3 normal = normalTexture.Sample(smp, input.uv).xyz;
 	//-1,1‚Ì”ÍˆÍ‚ÉŽû‚ß‚é
 	normal = (normal * 2.f) - 1.f;
