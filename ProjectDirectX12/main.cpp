@@ -127,7 +127,7 @@ int main()
 	constexpr std::size_t WINDOW_HEIGHT = 512;
 
 	constexpr float CAMERA_NEAR_Z = 0.01f;
-	constexpr float CAMERA_FAR_Z = 100.f;
+	constexpr float CAMERA_FAR_Z = 1000.f;
 
 	constexpr float VIEW_ANGLE = DirectX::XM_PIDIV2;
 
@@ -193,8 +193,8 @@ int main()
 
 	//シャドウマップの距離テーブル
 	constexpr std::array<std::size_t, SHADOW_MAP_NUM> SHADOW_MAP_AREA_TABLE = {
-		1,
-		5,
+		10,
+		50,
 		CAMERA_FAR_Z
 	};
 
@@ -827,10 +827,14 @@ int main()
 	};
 
 	ModelData modelData{};
-	std::fill(std::begin(modelData.world), std::end(modelData.world), XMMatrixScaling(20.f, 20.f, 20.f));
+	//std::fill(std::begin(modelData.world), std::end(modelData.world), XMMatrixScaling(20.f, 20.f, 20.f));
 	for (std::size_t i = 0; i < MODEL_HEIGHT_NUM; i++)
 		for (std::size_t j = 0; j < MODEL_WIDTH_NUM; j++)
+		{
+			float rate = i % 2 == 0 && j % 2 == 0 ? 40.f : 20.f;
+			modelData.world[i * MODEL_HEIGHT_NUM + j] = XMMatrixScaling(rate, rate, rate);
 			modelData.world[i * MODEL_HEIGHT_NUM + j] *= XMMatrixTranslation(8.f * j - 4.f, 0.f, 8.f * i - 4.f);
+		}
 
 	GroundData groundData{};
 	groundData.world = XMMatrixScaling(500.f, 500.f, 500.f) * XMMatrixRotationX(XM_PIDIV2) * XMMatrixTranslation(0.f, 50.f, 0.f);
@@ -941,7 +945,10 @@ int main()
 		{
 			// ゲームパッドの入力情報取得
 			auto padData = gamepad.get_state();
-			pdx12::UpdateTPS(tps, padData.lY / 2000.f, padData.lX / 2000.f, -padData.lZ / 2000.f);
+			pdx12::UpdateTPS(tps, padData.lY / 1000.f, padData.lX / 1000.f, -padData.lZ / 1000.f);
+
+			tps.target.y += padData.rgbButtons[7] == 0x80 ? 1.f : 0.f;
+			tps.target.y -= padData.rgbButtons[6] == 0x80 ? 1.f : 0.f;
 
 			eye = pdx12::GetEye(tps);
 			target = tps.target;
