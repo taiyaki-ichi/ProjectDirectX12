@@ -97,7 +97,10 @@ struct PostEffectData
 	float _pad2;
 };
 
-constexpr std::size_t MODEL_NUM = 8;
+constexpr std::size_t MODEL_WIDTH_NUM = 10;
+constexpr std::size_t MODEL_HEIGHT_NUM = 10;
+constexpr std::size_t MODEL_NUM = MODEL_WIDTH_NUM * MODEL_HEIGHT_NUM;
+
 struct ModelData
 {
 	XMMATRIX world[MODEL_NUM];
@@ -288,7 +291,7 @@ int main()
 	{
 		objl::Loader Loader;
 
-		bool loadout = Loader.LoadFile("3DModel/bun_zipper.obj");
+		bool loadout = Loader.LoadFile("3DModel/bun_zipper_res2.obj");
 		objl::Mesh mesh = Loader.LoadedMeshes[0];
 
 		modelVertexBuffer = pdx12::create_commited_upload_buffer_resource(device.get(), sizeof(float) * 6 * mesh.Vertices.size());
@@ -787,7 +790,7 @@ int main()
 	lightData.directionLight.dir = lightDir;
 	lightData.directionLight.color = lightColor;
 
-	lightData.pointLightNum = 500;
+	lightData.pointLightNum = 800;
 
 	for (std::size_t i = 0; i < lightData.pointLightNum; i++)
 	{
@@ -802,9 +805,9 @@ int main()
 		};
 
 		lightData.pointLight[i].pos = {
-			50.f - r(mt) * 100.f,
+			40.f - (r(mt) * 2.f - 1.f) * 80.f,
 			1.f,
-			50.f - r(mt) * 100.f
+			40.f - (r(mt) * 2.f - 1.f) * 80.f
 		};
 
 		lightData.pointLight[i].range = 2.f;
@@ -820,9 +823,10 @@ int main()
 	};
 
 	ModelData modelData{};
-	std::fill(std::begin(modelData.world), std::end(modelData.world), XMMatrixScaling(10.f, 10.f, 10.f));
-	for (std::size_t i = 0; i < MODEL_NUM; i++)
-		modelData.world[i] *= XMMatrixTranslation(0.f, 0.f, 4.f * i - 2.f);
+	std::fill(std::begin(modelData.world), std::end(modelData.world), XMMatrixScaling(20.f, 20.f, 20.f));
+	for (std::size_t i = 0; i < MODEL_HEIGHT_NUM; i++)
+		for (std::size_t j = 0; j < MODEL_WIDTH_NUM; j++)
+			modelData.world[i * MODEL_HEIGHT_NUM + j] *= XMMatrixTranslation(8.f * j - 4.f, 0.f, 8.f * i - 4.f);
 
 	GroundData groundData{};
 	groundData.world = XMMatrixScaling(500.f, 500.f, 500.f) * XMMatrixRotationX(XM_PIDIV2) * XMMatrixTranslation(0.f, 50.f, 0.f);
@@ -919,8 +923,12 @@ int main()
 		keyboard.update();
 		mouse.update();
 
-		for (std::size_t i = 0; i < MODEL_NUM; i++)
-			modelData.world[i] *= XMMatrixTranslation(0.f, 0.f, -4.f * i + 2.f) * XMMatrixRotationY(0.01f) * XMMatrixTranslation(0.f, 0.f, 4.f * i - 2.f);
+		for (std::size_t i = 0; i < MODEL_HEIGHT_NUM; i++)
+			for (std::size_t j = 0; j < MODEL_WIDTH_NUM; j++)
+				modelData.world[i * MODEL_HEIGHT_NUM + j] *= XMMatrixTranslation(-(8.f * j - 4.f), 0.f, -(8.f * i - 4.f)) * XMMatrixRotationY(0.01f) * XMMatrixTranslation(8.f * j - 4.f, 0.f, 8.f * i - 4.f);
+
+		//for (std::size_t i = 0; i < MODEL_NUM; i++)
+			//modelData.world[i] *= XMMatrixTranslation(0.f, 0.f, -4.f * i + 2.f) * XMMatrixRotationY(0.01f) * XMMatrixTranslation(0.f, 0.f, 4.f * i - 2.f);
 		*mappedModelDataPtr = modelData;
 
 		
