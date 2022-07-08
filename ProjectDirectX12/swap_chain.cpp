@@ -17,8 +17,8 @@ namespace pdx12
 			if (FAILED(CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&tmp))))
 				THROW_PDX12_EXCEPTION("failed CreateDXGIFactory2");
 #else
-			if (FAILED(CreateDXGIFactory2(0, IID_PPV_ARGS(&factory))))
-				THROW_PXD12_EXCEPTION("failed CreateDXGIFactory2");
+			if (FAILED(CreateDXGIFactory2(0, IID_PPV_ARGS(&tmp))))
+				THROW_PDX12_EXCEPTION("failed CreateDXGIFactory2");
 #endif
 
 			factory.reset(tmp);

@@ -135,6 +135,8 @@ int main()
 	constexpr std::size_t FRAME_BUFFER_NUM = 2;
 	constexpr DXGI_FORMAT FRAME_BUFFER_FORMAT = DXGI_FORMAT_B8G8R8A8_UNORM;
 
+	constexpr std::size_t COMMAND_ALLOCATORE_NUM = 1;
+
 	constexpr DXGI_FORMAT DEPTH_BUFFER_FORMAT = DXGI_FORMAT_D32_FLOAT;
 	constexpr DXGI_FORMAT DEPTH_BUFFER_SRV_FORMAT = DXGI_FORMAT_R32_FLOAT;
 
@@ -187,9 +189,9 @@ int main()
 	//カスケードシャドウマップのサイズ
 	//近い順
 	constexpr std::array<std::size_t, SHADOW_MAP_NUM> SHADOW_MAP_SIZE = {
-		4096,
-		4096,
-		4096,
+		2048,
+		2048,
+		2048,
 	};
 
 	//シャドウマップの距離テーブル
@@ -215,7 +217,7 @@ int main()
 
 	auto device = pdx12::create_device();
 
-	pdx12::command_manager<1> commandManager{};
+	pdx12::command_manager<COMMAND_ALLOCATORE_NUM> commandManager{};
 	commandManager.initialize(device.get());
 
 	auto swapChain = pdx12::create_swap_chain(commandManager.get_queue(), hwnd, FRAME_BUFFER_FORMAT, FRAME_BUFFER_NUM);
@@ -1032,6 +1034,7 @@ int main()
 
 		auto backBufferIndex = swapChain->GetCurrentBackBufferIndex();
 
+		//バックバッファと同じインデックスのコマンドアロケーターを使用する
 		commandManager.reset_list(0);
 
 
@@ -1111,11 +1114,11 @@ int main()
 		pdx12::resource_barrior(commandManager.get_list(), depthBuffer, D3D12_RESOURCE_STATE_COMMON);
 
 
-
 		//
 		//シャドウマップの描写
 		//
 
+		//commandManager.reset_list(1);
 		for (std::size_t i = 0; i < SHADOW_MAP_NUM; i++)
 		{
 			D3D12_VIEWPORT viewport{ 0,0, static_cast<float>(SHADOW_MAP_SIZE[i]),static_cast<float>(SHADOW_MAP_SIZE[i]),0.f,1.f };
@@ -1305,8 +1308,8 @@ int main()
 		commandManager.get_list()->Close();
 		commandManager.excute();
 		commandManager.signal();
-		commandManager.wait(0);
 
+		commandManager.wait(0);
 		swapChain->Present(1, 0);
 	}
 	
