@@ -135,7 +135,7 @@ int main()
 	constexpr std::size_t FRAME_BUFFER_NUM = 2;
 	constexpr DXGI_FORMAT FRAME_BUFFER_FORMAT = DXGI_FORMAT_B8G8R8A8_UNORM;
 
-	constexpr std::size_t COMMAND_ALLOCATORE_NUM = 1;
+	constexpr std::size_t COMMAND_ALLOCATORE_NUM = 1 + SHADOW_MAP_NUM;
 
 	constexpr DXGI_FORMAT DEPTH_BUFFER_FORMAT = DXGI_FORMAT_D32_FLOAT;
 	constexpr DXGI_FORMAT DEPTH_BUFFER_SRV_FORMAT = DXGI_FORMAT_R32_FLOAT;
@@ -1034,17 +1034,16 @@ int main()
 
 		auto backBufferIndex = swapChain->GetCurrentBackBufferIndex();
 
-		//バックバッファと同じインデックスのコマンドアロケーターを使用する
-		commandManager.reset_list(0);
-
 
 		//
 		//GBufferにモデルの描写
+		//0番目のアロケータを使用
 		//
+
+		commandManager.reset_list(0);
 
 		commandManager.get_list()->RSSetViewports(1, &viewport);
 		commandManager.get_list()->RSSetScissorRects(1, &scissorRect);
-
 
 		//全てのGBufferにバリアをかける
 		pdx12::resource_barrior(commandManager.get_list(), gBufferAlbedoColorResource, D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -1104,23 +1103,25 @@ int main()
 
 		commandManager.get_list()->DrawInstanced(peraPolygonVertexNum, 1, 0, 0);
 
-		//
-		//
-		//
-
 		pdx12::resource_barrior(commandManager.get_list(), gBufferAlbedoColorResource, D3D12_RESOURCE_STATE_COMMON);
 		pdx12::resource_barrior(commandManager.get_list(), gBufferNormalResource, D3D12_RESOURCE_STATE_COMMON);
 		pdx12::resource_barrior(commandManager.get_list(), gBufferWorldPositionResource, D3D12_RESOURCE_STATE_COMMON);
 		pdx12::resource_barrior(commandManager.get_list(), depthBuffer, D3D12_RESOURCE_STATE_COMMON);
 
+		commandManager.get_list()->Close();
+		commandManager.excute();
+		commandManager.signal();
+
 
 		//
 		//シャドウマップの描写
+		//1番目から1+SHDOW_MAP_NUM番目のアロケータを使用
 		//
 
-		//commandManager.reset_list(1);
 		for (std::size_t i = 0; i < SHADOW_MAP_NUM; i++)
 		{
+			commandManager.reset_list(1 + i);
+
 			D3D12_VIEWPORT viewport{ 0,0, static_cast<float>(SHADOW_MAP_SIZE[i]),static_cast<float>(SHADOW_MAP_SIZE[i]),0.f,1.f };
 			D3D12_RECT scissorRect{ 0,0,static_cast<LONG>(SHADOW_MAP_SIZE[i]),static_cast<LONG>(SHADOW_MAP_SIZE[i]) };
 
@@ -1168,11 +1169,27 @@ int main()
 			commandManager.get_list()->DrawInstanced(peraPolygonVertexNum, 1, 0, 0);
 			
 			pdx12::resource_barrior(commandManager.get_list(), shadowMapResource[i], D3D12_RESOURCE_STATE_COMMON);
+
+			commandManager.get_list()->Close();
+			commandManager.excute();
+			commandManager.signal();
 		}
+
+
+		//
+		//GBufferの描画処理とシャドウマップの描画処理が終わるのをそれぞれ待つ
+		//
+
+		commandManager.wait(0);
+		for (std::size_t i = 0; i < SHADOW_MAP_NUM; i++)
+			commandManager.wait(1 + i);
+
 
 		//
 		//ライトカリング
 		//
+
+		commandManager.reset_list(0);
 
 		pdx12::resource_barrior(commandManager.get_list(), pointLightIndexResource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 		commandManager.get_list()->SetComputeRootSignature(lightCullingRootSignater.get());
@@ -1229,6 +1246,7 @@ int main()
 		//
 		//高輝度のダウンサンプリング
 		//
+
 		{
 			for (std::size_t i = 0; i < SHRINKED_HIGH_LUMINANCE_NUM; i++)
 				pdx12::resource_barrior(commandManager.get_list(), shrinkedHighLuminanceResource[i], D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -1301,15 +1319,12 @@ int main()
 
 		pdx12::resource_barrior(commandManager.get_list(), frameBufferResources[backBufferIndex], D3D12_RESOURCE_STATE_COMMON);
 
-		//
-		//コマンドの発行など
-		//
-
 		commandManager.get_list()->Close();
 		commandManager.excute();
 		commandManager.signal();
 
 		commandManager.wait(0);
+
 		swapChain->Present(1, 0);
 	}
 	
