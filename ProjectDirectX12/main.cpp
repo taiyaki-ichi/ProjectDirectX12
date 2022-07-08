@@ -135,7 +135,10 @@ int main()
 	constexpr std::size_t FRAME_BUFFER_NUM = 2;
 	constexpr DXGI_FORMAT FRAME_BUFFER_FORMAT = DXGI_FORMAT_B8G8R8A8_UNORM;
 
-	constexpr std::size_t COMMAND_ALLOCATORE_NUM = 1 + SHADOW_MAP_NUM;
+	//シャドウマップのセットの数
+	constexpr std::size_t SHADOW_MAP_SET_NUM = 3;
+
+	constexpr std::size_t COMMAND_ALLOCATORE_NUM = 1 + SHADOW_MAP_NUM + SHADOW_MAP_SET_NUM;
 
 	constexpr DXGI_FORMAT DEPTH_BUFFER_FORMAT = DXGI_FORMAT_D32_FLOAT;
 	constexpr DXGI_FORMAT DEPTH_BUFFER_SRV_FORMAT = DXGI_FORMAT_R32_FLOAT;
@@ -409,11 +412,12 @@ int main()
 	auto postEffectDataResource = pdx12::create_commited_upload_buffer_resource(device.get(), pdx12::alignment<UINT64>(sizeof(PostEffectData), 256));
 
 	//シャドウマップのリソース
-	std::array<pdx12::resource_and_state, SHADOW_MAP_NUM> shadowMapResource{};
+	std::array<pdx12::resource_and_state, SHADOW_MAP_NUM* SHADOW_MAP_SET_NUM> shadowMapResource{};
 	{
-		for (std::size_t i = 0; i < SHADOW_MAP_NUM; i++)
-			shadowMapResource[i] = pdx12::create_commited_texture_resource(device.get(), SHADOW_MAP_FORMAT, SHADOW_MAP_SIZE[i], SHADOW_MAP_SIZE[i], 2,
-				1, 1, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, &depthBufferClearValue);
+		for (std::size_t i = 0; i < SHADOW_MAP_SET_NUM; i++)
+			for (std::size_t j = 0; j < SHADOW_MAP_NUM; j++)
+				shadowMapResource[i * SHADOW_MAP_NUM + j] = pdx12::create_commited_texture_resource(device.get(), SHADOW_MAP_FORMAT, SHADOW_MAP_SIZE[j], SHADOW_MAP_SIZE[j], 2,
+					1, 1, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, &depthBufferClearValue);
 	}
 
 	//ライトのビュープロジェクション行列のリソース
@@ -494,18 +498,19 @@ int main()
 	//シャドウマップを作成する際に使用するデプスバッファのビューを作るよう
 	pdx12::descriptor_heap descriptorHeapShadowDSV{};
 	{
-		descriptorHeapShadowDSV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_DSV, SHADOW_MAP_NUM);
+		descriptorHeapShadowDSV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_DSV, SHADOW_MAP_NUM* SHADOW_MAP_SET_NUM);
 
-		for (std::size_t i = 0; i < SHADOW_MAP_NUM; i++)
-			pdx12::create_texture2D_DSV(device.get(), descriptorHeapShadowDSV.get_CPU_handle(i), shadowMapResource[i].first.get(), SHADOW_MAP_FORMAT, 0);
+		for (std::size_t i = 0; i < SHADOW_MAP_SET_NUM; i++)
+			for (std::size_t j = 0; j < SHADOW_MAP_NUM; j++)
+				pdx12::create_texture2D_DSV(device.get(), descriptorHeapShadowDSV.get_CPU_handle(i * SHADOW_MAP_NUM + j), shadowMapResource[i * SHADOW_MAP_NUM + j].first.get(), SHADOW_MAP_FORMAT, 0);
 	}
 
 
 	//ディファードレンダリングを行う際に利用するSRVなどを作成する用のデスクリプタヒープ
 	pdx12::descriptor_heap defferredRenderingDescriptorHeapCBVSRVUAV{};
 	{
-		//カメラのデータ、ライトのデータ、アルベドカラー、法線、ワールド座標、デプス、シャドウマップ、ポイントライトインデックス
-		defferredRenderingDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 6 + SHADOW_MAP_NUM + 1);
+		//カメラのデータ、ライトのデータ、アルベドカラー、法線、ワールド座標、デプス、ポイントライトインデックス、シャドウマップ
+		defferredRenderingDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 7 + SHADOW_MAP_NUM * SHADOW_MAP_SET_NUM);
 
 		//CameraData
 		pdx12::create_CBV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(0),
@@ -531,15 +536,15 @@ int main()
 		pdx12::create_texture2D_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(5),
 			depthBuffer.first.get(), DEPTH_BUFFER_SRV_FORMAT, 1, 0, 0, 0.f);
 
-		//シャドウマップ
-		for (std::size_t i = 0; i < SHADOW_MAP_NUM; i++)
-			pdx12::create_texture2D_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(6 + i),
-				shadowMapResource[i].first.get(), SHADOW_MAP_SRV_FORMAT, 1, 0, 0, 0.f);
-
 		//ポイントライトインデックス
 		//FormatはUnknownじゃあないとダメだって
-		pdx12::create_buffer_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(6 + SHADOW_MAP_NUM),
-			pointLightIndexResource.first.get(), MAX_POINT_LIGHT_NUM * LIGHT_CULLING_TILE_NUM, sizeof(int), 0, D3D12_BUFFER_SRV_FLAG_NONE);
+		pdx12::create_buffer_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(6),
+			pointLightIndexResource.first.get(), MAX_POINT_LIGHT_NUM* LIGHT_CULLING_TILE_NUM, sizeof(int), 0, D3D12_BUFFER_SRV_FLAG_NONE);
+
+		//シャドウマップ
+		for (std::size_t i = 0; i < SHADOW_MAP_NUM * SHADOW_MAP_SET_NUM; i++)
+			pdx12::create_texture2D_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(7 + i),
+				shadowMapResource[i].first.get(), SHADOW_MAP_SRV_FORMAT, 1, 0, 0, 0.f);
 
 	}
 
@@ -737,7 +742,7 @@ int main()
 
 	auto deferredRenderingRootSignature = pdx12::create_root_signature(device.get(),
 		{ {{/*CameraData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*LightData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*アルベドカラー、法線、ワールド座標、デプスバッファの順*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,4},
-		{/*シャドウマップ*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,SHADOW_MAP_NUM},{/*ポイントライトのインデックスのリスト*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV}} },
+		{/*ポイントライトのインデックスのリスト*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV}},{{/*シャドウマップ*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,SHADOW_MAP_NUM}} },
 		{ { D3D12_FILTER_MIN_MAG_MIP_LINEAR ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP,D3D12_COMPARISON_FUNC_NEVER} });
 
 	auto deferredRenderringGraphicsPipelineState = pdx12::create_graphics_pipeline(device.get(), deferredRenderingRootSignature.get(),
@@ -921,6 +926,24 @@ int main()
 	}
 
 	//
+	//最初のフレームで使用するシャドウマップを初期化しておく
+	//
+	
+	commandManager.reset_list(1 + SHADOW_MAP_NUM);
+	for (std::size_t i = 0; i < SHADOW_MAP_NUM; i++)
+	{
+		pdx12::resource_barrior(commandManager.get_list(), shadowMapResource[i], D3D12_RESOURCE_STATE_DEPTH_WRITE);
+		commandManager.get_list()->ClearDepthStencilView(descriptorHeapShadowDSV.get_CPU_handle(i),
+			D3D12_CLEAR_FLAG_DEPTH, 1.f, 0.f, 0, nullptr);
+		pdx12::resource_barrior(commandManager.get_list(), shadowMapResource[i], D3D12_RESOURCE_STATE_COMMON);
+	}
+	commandManager.get_list()->Close();
+	commandManager.excute();
+	commandManager.signal();
+
+	commandManager.wait(1 + SHADOW_MAP_NUM);
+
+	//
 	//メインループ
 	//
 
@@ -1033,6 +1056,30 @@ int main()
 		//
 
 		auto backBufferIndex = swapChain->GetCurrentBackBufferIndex();
+		auto shadowMapSetIndex = cnt % SHADOW_MAP_SET_NUM;
+
+		//
+		//前のフレームで使用したシャドウマップのクリア
+		//
+
+		auto prevShadowMapSetIndex = (shadowMapSetIndex + SHADOW_MAP_SET_NUM - 1) % SHADOW_MAP_SET_NUM;
+		commandManager.reset_list(1 + SHADOW_MAP_NUM + prevShadowMapSetIndex);
+		for (std::size_t i = 0; i < SHADOW_MAP_NUM; i++)
+		{
+			pdx12::resource_barrior(commandManager.get_list(), shadowMapResource[shadowMapSetIndex * SHADOW_MAP_SET_NUM + i], D3D12_RESOURCE_STATE_DEPTH_WRITE);
+			commandManager.get_list()->ClearDepthStencilView(descriptorHeapShadowDSV.get_CPU_handle(shadowMapSetIndex * SHADOW_MAP_SET_NUM + i),
+				D3D12_CLEAR_FLAG_DEPTH, 1.f, 0.f, 0, nullptr);
+			pdx12::resource_barrior(commandManager.get_list(), shadowMapResource[shadowMapSetIndex * SHADOW_MAP_SET_NUM + i], D3D12_RESOURCE_STATE_COMMON);
+		}
+		commandManager.get_list()->Close();
+		commandManager.excute();
+		commandManager.signal();
+
+		//
+		//このフレームで使用するシャドウマップのクリアの待機
+		//
+
+		commandManager.wait(1 + SHADOW_MAP_NUM + shadowMapSetIndex);
 
 
 		//
@@ -1128,10 +1175,10 @@ int main()
 			commandManager.get_list()->RSSetViewports(1, &viewport);
 			commandManager.get_list()->RSSetScissorRects(1, &scissorRect);
 
-			pdx12::resource_barrior(commandManager.get_list(), shadowMapResource[i], D3D12_RESOURCE_STATE_DEPTH_WRITE);
-			commandManager.get_list()->ClearDepthStencilView(descriptorHeapShadowDSV.get_CPU_handle(i), D3D12_CLEAR_FLAG_DEPTH, 1.f, 0.f, 0, nullptr);
+			pdx12::resource_barrior(commandManager.get_list(), shadowMapResource[shadowMapSetIndex * SHADOW_MAP_SET_NUM + i], D3D12_RESOURCE_STATE_DEPTH_WRITE);
+			//commandManager.get_list()->ClearDepthStencilView(descriptorHeapShadowDSV.get_CPU_handle(shadowMapSetIndex * SHADOW_MAP_SET_NUM + i), D3D12_CLEAR_FLAG_DEPTH, 1.f, 0.f, 0, nullptr);
 
-			auto depthBufferCPUHandle = descriptorHeapShadowDSV.get_CPU_handle(i);
+			auto depthBufferCPUHandle = descriptorHeapShadowDSV.get_CPU_handle(shadowMapSetIndex * SHADOW_MAP_SET_NUM + i);
 
 			commandManager.get_list()->OMSetRenderTargets(0, nullptr, false, &depthBufferCPUHandle);
 
@@ -1168,7 +1215,7 @@ int main()
 
 			commandManager.get_list()->DrawInstanced(peraPolygonVertexNum, 1, 0, 0);
 			
-			pdx12::resource_barrior(commandManager.get_list(), shadowMapResource[i], D3D12_RESOURCE_STATE_COMMON);
+			pdx12::resource_barrior(commandManager.get_list(), shadowMapResource[shadowMapSetIndex * SHADOW_MAP_SET_NUM + i], D3D12_RESOURCE_STATE_COMMON);
 
 			commandManager.get_list()->Close();
 			commandManager.excute();
@@ -1231,6 +1278,7 @@ int main()
 			commandManager.get_list()->SetDescriptorHeaps(1, &ptr);
 		}
 		commandManager.get_list()->SetGraphicsRootDescriptorTable(0, defferredRenderingDescriptorHeapCBVSRVUAV.get_GPU_handle(0));
+		commandManager.get_list()->SetGraphicsRootDescriptorTable(1, defferredRenderingDescriptorHeapCBVSRVUAV.get_GPU_handle(7 + shadowMapSetIndex * SHADOW_MAP_SET_NUM));
 		commandManager.get_list()->SetPipelineState(deferredRenderringGraphicsPipelineState.get());
 		//LISTではない
 		commandManager.get_list()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
