@@ -18,8 +18,8 @@ SamplerState smp : register(s0);
 //それぞれのスレッドで使用するUV座標を求めるのに使用
 cbuffer DispatchData : register(b0)
 {
-	float dispatchX;
-	float dispatchY;
+	uint dispatchX;
+	uint dispatchY;
 }
 
 //共有メモリ
@@ -52,6 +52,7 @@ void main(uint groupIndex : SV_GroupIndex, uint3 dispatchThreadID : SV_DispatchT
 	//待つ
 	GroupMemoryBarrierWithGroupSync();
 
+	[unroll]
 	for (uint i = 0; i < RESULT_TEXTURE_NUM; i++)
 	{
 		calcPixelColor(i, parity, groupIndex, dispatchThreadID);

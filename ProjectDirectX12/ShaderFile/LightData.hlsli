@@ -30,7 +30,7 @@ struct LightData
 	matrix directionLightViewProj[SHADOW_MAP_NUM];
 	
 	PointLight pointLight[MAX_POINT_LIGHT_NUM];
-	int pointLightNum;
+	uint pointLightNum;
 
 	float specPow;
 };

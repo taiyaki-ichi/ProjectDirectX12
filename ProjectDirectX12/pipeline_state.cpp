@@ -45,7 +45,7 @@ namespace pdx12
 		}
 
 		graphicsPipelineDesc.InputLayout.pInputElementDescs = inputElementDescs.data();
-		graphicsPipelineDesc.InputLayout.NumElements = inputElementDescs.size();
+		graphicsPipelineDesc.InputLayout.NumElements = static_cast<UINT>(inputElementDescs.size());
 		graphicsPipelineDesc.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;//カット値はナシ
 		graphicsPipelineDesc.PrimitiveTopologyType = primitiveTopologyType;
 
@@ -97,7 +97,7 @@ namespace pdx12
 		graphicsPipelineDesc.BlendState = blendDesc;
 
 
-		graphicsPipelineDesc.NumRenderTargets = renderTargetFormats.size();
+		graphicsPipelineDesc.NumRenderTargets = static_cast<UINT>(renderTargetFormats.size());
 		std::copy(renderTargetFormats.begin(), renderTargetFormats.end(), std::begin(graphicsPipelineDesc.RTVFormats));
 
 

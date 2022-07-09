@@ -138,6 +138,7 @@ namespace pdx12
 	{
 		allocators[index]->Reset();
 		list->Reset(allocators[index].get(), nullptr);
+		current_allocaotr_index = index;
 	}
 
 	template<std::size_t AllocatorNum>
