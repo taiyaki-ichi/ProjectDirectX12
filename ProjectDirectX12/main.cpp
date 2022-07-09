@@ -27,10 +27,96 @@
 
 using namespace DirectX;
 
+//
+//定数
+//
 
-//カスケードシャドウマップの数
-//TODO: 置く場所
+constexpr std::size_t WINDOW_WIDTH = 512;
+constexpr std::size_t WINDOW_HEIGHT = 512;
+
+constexpr float CAMERA_NEAR_Z = 0.01f;
+constexpr float CAMERA_FAR_Z = 1000.f;
+
+constexpr float VIEW_ANGLE = DirectX::XM_PIDIV2;
+
+constexpr std::size_t FRAME_BUFFER_NUM = 2;
+constexpr DXGI_FORMAT FRAME_BUFFER_FORMAT = DXGI_FORMAT_B8G8R8A8_UNORM;
+
 constexpr std::size_t SHADOW_MAP_NUM = 3;
+
+constexpr std::size_t COMMAND_ALLOCATORE_NUM = 1 + SHADOW_MAP_NUM;
+
+constexpr DXGI_FORMAT DEPTH_BUFFER_FORMAT = DXGI_FORMAT_D32_FLOAT;
+constexpr DXGI_FORMAT DEPTH_BUFFER_SRV_FORMAT = DXGI_FORMAT_R32_FLOAT;
+
+//GBufferのアルベドカラーのフォーマット
+//フレームバッファと同じフォーマットにしておく
+constexpr DXGI_FORMAT G_BUFFER_ALBEDO_COLOR_FORMAT = FRAME_BUFFER_FORMAT;
+
+//GBufferの法線のフォーマット
+//正規化された8ビットの浮動小数4つで表現
+constexpr DXGI_FORMAT G_BUFFER_NORMAL_FORMAT = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+//GBufferの位置のフォーマット
+//それぞれ32ビットにしたが助長かも
+constexpr DXGI_FORMAT G_BUFFER_WORLD_POSITION_FORMAT = DXGI_FORMAT_R32G32B32A32_FLOAT;
+
+//高輝度のファーマっと
+//フレームバッファと同じでおけ
+constexpr DXGI_FORMAT HIGH_LUMINANCE_FORMAT = FRAME_BUFFER_FORMAT;
+
+//高輝度のリソースのサイズ
+//ウィンドウと同じサイズでおｋ
+constexpr std::size_t HIGH_LUMINANCE_WIDTH = WINDOW_WIDTH;
+constexpr std::size_t HIGH_LUMINANCE_HEIGHT = WINDOW_HEIGHT;
+
+//縮小された高輝度のフォーマット
+//高輝度と同じフォーマットでおけ
+constexpr DXGI_FORMAT SHRINKED_HIGH_LUMINANCE_FORMAT = HIGH_LUMINANCE_FORMAT;
+
+//縮小された高輝度のリソースの数
+constexpr std::size_t SHRINKED_HIGH_LUMINANCE_NUM = 4;
+
+//ポストエフェクトをかける前のリソースのフォーマット
+//フレームバッファのフォーマットと同じで
+constexpr DXGI_FORMAT MAIN_COLOR_RESOURCE_FORMAT = FRAME_BUFFER_FORMAT;
+
+constexpr std::size_t MAIN_COLOR_RESOURCE_WIDTH = WINDOW_WIDTH;
+constexpr std::size_t MAIN_COLOR_RESOURCE_HEIGHT = WINDOW_HEIGHT;
+
+//縮小されダウンサンプリングされたリソースのフォーマット
+//被写界深度のポストエフェクトをかける際に使用する
+constexpr DXGI_FORMAT SHRINKED_MAIN_COLOR_RESOURCE_FORMAT = MAIN_COLOR_RESOURCE_FORMAT;
+
+//縮小されダウンサンプリングされたリソースのフォーマットの数
+constexpr std::size_t SHRINKED_MAIN_COLOR_RESOURCE_NUM = 4;
+
+//シャドウマップのフォーマット
+constexpr DXGI_FORMAT SHADOW_MAP_FORMAT = DXGI_FORMAT_D32_FLOAT;
+constexpr DXGI_FORMAT SHADOW_MAP_SRV_FORMAT = DXGI_FORMAT_R32_FLOAT;
+
+//カスケードシャドウマップのサイズ
+//近い順
+constexpr std::array<std::size_t, SHADOW_MAP_NUM> SHADOW_MAP_SIZE = {
+	2048,
+	2048,
+	2048,
+};
+
+//シャドウマップの距離テーブル
+constexpr std::array<std::size_t, SHADOW_MAP_NUM> SHADOW_MAP_AREA_TABLE = {
+	10,
+	50,
+	static_cast<std::size_t>(CAMERA_FAR_Z)
+};
+
+//ライトのビュープロジェクション行列の数
+//シャドウマップと同じ数
+constexpr std::size_t LIGHT_VIEW_PROJ_MATRIX_NUM = SHADOW_MAP_NUM;
+
+constexpr std::size_t LIGHT_CULLING_TILE_WIDTH = 16;
+constexpr std::size_t LIGHT_CULLING_TILE_HEIGHT = 16;
+constexpr std::size_t LIGHT_CULLING_TILE_NUM = (WINDOW_WIDTH / LIGHT_CULLING_TILE_WIDTH) * (WINDOW_HEIGHT / LIGHT_CULLING_TILE_HEIGHT);
 
 constexpr std::size_t MAX_POINT_LIGHT_NUM = 1000;
 
@@ -53,7 +139,6 @@ struct DirectionLight
 };
 
 
-//
 struct CameraData
 {
 	XMMATRIX view;
@@ -124,94 +209,6 @@ int main()
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
 
-	constexpr std::size_t WINDOW_WIDTH = 512;
-	constexpr std::size_t WINDOW_HEIGHT = 512;
-
-	constexpr float CAMERA_NEAR_Z = 0.01f;
-	constexpr float CAMERA_FAR_Z = 1000.f;
-
-	constexpr float VIEW_ANGLE = DirectX::XM_PIDIV2;
-
-	constexpr std::size_t FRAME_BUFFER_NUM = 2;
-	constexpr DXGI_FORMAT FRAME_BUFFER_FORMAT = DXGI_FORMAT_B8G8R8A8_UNORM;
-
-	constexpr std::size_t COMMAND_ALLOCATORE_NUM = 1 + SHADOW_MAP_NUM;
-
-	constexpr DXGI_FORMAT DEPTH_BUFFER_FORMAT = DXGI_FORMAT_D32_FLOAT;
-	constexpr DXGI_FORMAT DEPTH_BUFFER_SRV_FORMAT = DXGI_FORMAT_R32_FLOAT;
-
-	//GBufferのアルベドカラーのフォーマット
-	//フレームバッファと同じフォーマットにしておく
-	constexpr DXGI_FORMAT G_BUFFER_ALBEDO_COLOR_FORMAT = FRAME_BUFFER_FORMAT;
-
-	//GBufferの法線のフォーマット
-	//正規化された8ビットの浮動小数4つで表現
-	constexpr DXGI_FORMAT G_BUFFER_NORMAL_FORMAT = DXGI_FORMAT_R8G8B8A8_UNORM;
-
-	//GBufferの位置のフォーマット
-	//それぞれ32ビットにしたが助長かも
-	constexpr DXGI_FORMAT G_BUFFER_WORLD_POSITION_FORMAT = DXGI_FORMAT_R32G32B32A32_FLOAT;
-
-	//高輝度のファーマっと
-	//フレームバッファと同じでおけ
-	constexpr DXGI_FORMAT HIGH_LUMINANCE_FORMAT = FRAME_BUFFER_FORMAT;
-
-	//高輝度のリソースのサイズ
-	//ウィンドウと同じサイズでおｋ
-	constexpr std::size_t HIGH_LUMINANCE_WIDTH = WINDOW_WIDTH;
-	constexpr std::size_t HIGH_LUMINANCE_HEIGHT = WINDOW_HEIGHT;
-
-	//縮小された高輝度のフォーマット
-	//高輝度と同じフォーマットでおけ
-	constexpr DXGI_FORMAT SHRINKED_HIGH_LUMINANCE_FORMAT = HIGH_LUMINANCE_FORMAT;
-
-	//縮小された高輝度のリソースの数
-	constexpr std::size_t SHRINKED_HIGH_LUMINANCE_NUM = 4;
-
-	//ポストエフェクトをかける前のリソースのフォーマット
-	//フレームバッファのフォーマットと同じで
-	constexpr DXGI_FORMAT MAIN_COLOR_RESOURCE_FORMAT = FRAME_BUFFER_FORMAT;
-
-	constexpr std::size_t MAIN_COLOR_RESOURCE_WIDTH = WINDOW_WIDTH;
-	constexpr std::size_t MAIN_COLOR_RESOURCE_HEIGHT = WINDOW_HEIGHT;
-
-	//縮小されダウンサンプリングされたリソースのフォーマット
-	//被写界深度のポストエフェクトをかける際に使用する
-	constexpr DXGI_FORMAT SHRINKED_MAIN_COLOR_RESOURCE_FORMAT = MAIN_COLOR_RESOURCE_FORMAT;
-
-	//縮小されダウンサンプリングされたリソースのフォーマットの数
-	constexpr std::size_t SHRINKED_MAIN_COLOR_RESOURCE_NUM = 4;
-
-	//シャドウマップのフォーマット
-	constexpr DXGI_FORMAT SHADOW_MAP_FORMAT = DXGI_FORMAT_D32_FLOAT;
-	constexpr DXGI_FORMAT SHADOW_MAP_SRV_FORMAT = DXGI_FORMAT_R32_FLOAT;
-
-	//カスケードシャドウマップのサイズ
-	//近い順
-	constexpr std::array<std::size_t, SHADOW_MAP_NUM> SHADOW_MAP_SIZE = {
-		2048,
-		2048,
-		2048,
-	};
-
-	//シャドウマップの距離テーブル
-	constexpr std::array<std::size_t, SHADOW_MAP_NUM> SHADOW_MAP_AREA_TABLE = {
-		10,
-		50,
-		static_cast<std::size_t>(CAMERA_FAR_Z)
-	};
-
-	//ライトのビュープロジェクション行列の数
-	//シャドウマップと同じ数
-	constexpr std::size_t LIGHT_VIEW_PROJ_MATRIX_NUM = SHADOW_MAP_NUM;
-
-	constexpr std::size_t LIGHT_CULLING_TILE_WIDTH = 16;
-	constexpr std::size_t LIGHT_CULLING_TILE_HEIGHT = 16;
-	constexpr std::size_t LIGHT_CULLING_TILE_NUM = (WINDOW_WIDTH / LIGHT_CULLING_TILE_WIDTH) * (WINDOW_HEIGHT / LIGHT_CULLING_TILE_HEIGHT);
-
-	//
-	//基本的な部分の作成
-	//
 
 	auto hwnd = pdx12::create_window(L"window", WINDOW_WIDTH, WINDOW_HEIGHT);
 
@@ -234,18 +231,13 @@ int main()
 
 	//灰色
 	constexpr std::array<float, 4> grayColor{ 0.5f,0.5f,0.5f,1.f };
-
-	//全部ゼロ
-	constexpr std::array<float, 4> zeroFloat4{ 0.f,0.f,0.f,0.f };
-	//全部ゼロUintver
-	constexpr std::array<std::uint32_t, 4> zeroUint4{ 0,0,0,0 };
-
-
 	D3D12_CLEAR_VALUE grayClearValue{};
 	grayClearValue.Format = FRAME_BUFFER_FORMAT;
 	std::copy(grayColor.begin(), grayColor.end(), std::begin(grayClearValue.Color));
 
-	//ゼロでクリアするようなClearValueの取得
+	//全部ゼロ
+	constexpr std::array<float, 4> zeroFloat4{ 0.f,0.f,0.f,0.f };
+	//ゼロでクリアするようなClearValueを生成するラムダ式
 	auto getZeroFloat4CearValue = [&zeroFloat4](DXGI_FORMAT format) {
 		D3D12_CLEAR_VALUE result{};
 		result.Format = format;
@@ -253,10 +245,10 @@ int main()
 		return result;
 	};
 
+
 	//
 	//リソースの作成
 	//
-
 
 	//フレームバッファのリソース
 	std::array<pdx12::resource_and_state, FRAME_BUFFER_NUM> frameBufferResources{};
@@ -830,7 +822,6 @@ int main()
 	};
 
 	ModelData modelData{};
-	//std::fill(std::begin(modelData.world), std::end(modelData.world), XMMatrixScaling(20.f, 20.f, 20.f));
 	for (std::size_t i = 0; i < MODEL_HEIGHT_NUM; i++)
 		for (std::size_t j = 0; j < MODEL_WIDTH_NUM; j++)
 		{
@@ -838,6 +829,7 @@ int main()
 			modelData.world[i * MODEL_HEIGHT_NUM + j] = XMMatrixScaling(rate, rate, rate);
 			modelData.world[i * MODEL_HEIGHT_NUM + j] *= XMMatrixTranslation(8.f * j - 4.f, 0.f, 8.f * i - 4.f);
 		}
+
 
 	GroundData groundData{};
 	groundData.world = XMMatrixScaling(500.f, 500.f, 500.f) * XMMatrixRotationX(XM_PIDIV2) * XMMatrixTranslation(0.f, 50.f, 0.f);
@@ -899,24 +891,20 @@ int main()
 
 	auto directInput = pdx12::create_direct_input();
 
-	pdx12::keyboard_device keyboard{};
-	keyboard.initialize(directInput.get(), hwnd);
-
-	pdx12::mouse_device mouse{};
-	mouse.initialize(directInput.get(), hwnd);
-
 	pdx12::gamepad_device gamepad{};
-
-	bool success = false;
-	while (!success)
 	{
-		success = true;
-		try {
-			gamepad.initialize(directInput.get(), hwnd);
-		}
-		catch (std::runtime_error&)
+		//ゲームパッドの接続を待つ
+		bool success = false;
+		while (!success)
 		{
-			success = false;
+			success = true;
+			try {
+				gamepad.initialize(directInput.get(), hwnd);
+			}
+			catch (std::runtime_error&)
+			{
+				success = false;
+			}
 		}
 	}
 
@@ -925,14 +913,17 @@ int main()
 	//
 
 	auto start = std::chrono::system_clock::now();
-	std::size_t cnt = 0;
+	std::size_t frameCnt = 0;
 	while (pdx12::update_window())
 	{
 		//
-		//更新
+		//更新処理
 		//
 
-		if (cnt % 100 == 0)
+		frameCnt++;
+
+		//fpsの表示
+		if (frameCnt % 100 == 0)
 		{
 			auto end = std::chrono::system_clock::now();
 			auto time = end - start;
@@ -940,22 +931,14 @@ int main()
 			start = std::chrono::system_clock::now();
 		}
 
-		keyboard.update();
-		mouse.update();
-
+		//それぞれのモデルの回転
 		for (std::size_t i = 0; i < MODEL_HEIGHT_NUM; i++)
 			for (std::size_t j = 0; j < MODEL_WIDTH_NUM; j++)
 				modelData.world[i * MODEL_HEIGHT_NUM + j] *= XMMatrixTranslation(-(8.f * j - 4.f), 0.f, -(8.f * i - 4.f)) * XMMatrixRotationY(0.01f) * XMMatrixTranslation(8.f * j - 4.f, 0.f, 8.f * i - 4.f);
-
-		//for (std::size_t i = 0; i < MODEL_NUM; i++)
-			//modelData.world[i] *= XMMatrixTranslation(0.f, 0.f, -4.f * i + 2.f) * XMMatrixRotationY(0.01f) * XMMatrixTranslation(0.f, 0.f, 4.f * i - 2.f);
 		*mappedModelDataPtr = modelData;
 
-		
-		cnt++;
-
+		//ゲームパッドの情報から視点を移動させる処理
 		{
-			// ゲームパッドの入力情報取得
 			auto padData = gamepad.get_state();
 			pdx12::UpdateTPS(tps, padData.lY / 1000.f, padData.lX / 1000.f, -padData.lZ / 1000.f);
 
@@ -966,6 +949,7 @@ int main()
 			target = tps.target;
 		}
 
+		//以下, 更新された視点の情報からシェーダで使用する情報を更新する
 		
 		auto view = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
 
@@ -1029,7 +1013,7 @@ int main()
 
 
 		//
-		//コマンドリストの初期化など
+		//描画開始の準備
 		//
 
 		auto backBufferIndex = swapChain->GetCurrentBackBufferIndex();
