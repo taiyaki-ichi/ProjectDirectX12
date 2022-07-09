@@ -43,7 +43,7 @@ namespace pdx12
 
 
 	resource_and_state create_commited_texture_resource(ID3D12Device* device,
-		DXGI_FORMAT format, UINT64 width, UINT64 height, std::size_t dimension, UINT16 depthOrArraySize, UINT16 mipLevels, D3D12_RESOURCE_FLAGS flags, D3D12_CLEAR_VALUE const* clearValue)
+		DXGI_FORMAT format, UINT64 width, UINT height, std::size_t dimension, UINT16 depthOrArraySize, UINT16 mipLevels, D3D12_RESOURCE_FLAGS flags, D3D12_CLEAR_VALUE const* clearValue)
 	{
 		D3D12_HEAP_PROPERTIES heapProperties{};
 		heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;

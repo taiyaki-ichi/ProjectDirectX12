@@ -45,7 +45,7 @@ namespace pdx12
 				D3D12_ROOT_PARAMETER tmp{};
 				tmp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 				tmp.DescriptorTable.pDescriptorRanges = r.data();
-				tmp.DescriptorTable.NumDescriptorRanges = r.size();
+				tmp.DescriptorTable.NumDescriptorRanges = static_cast<UINT>(r.size());
 				tmp.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 				descriptorTables.push_back(std::move(tmp));
@@ -78,9 +78,9 @@ namespace pdx12
 
 		D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
 		rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-		rootSignatureDesc.NumParameters = descriptorTables.size();
+		rootSignatureDesc.NumParameters = static_cast<UINT>(descriptorTables.size());
 		rootSignatureDesc.pParameters = descriptorTables.size() > 0 ? descriptorTables.data() : nullptr;
-		rootSignatureDesc.NumStaticSamplers = staticSamplerDescs.size();
+		rootSignatureDesc.NumStaticSamplers = static_cast<UINT>(staticSamplerDescs.size());
 		rootSignatureDesc.pStaticSamplers = staticSamplerDescs.size() > 0 ? staticSamplerDescs.data() : nullptr;
 
 

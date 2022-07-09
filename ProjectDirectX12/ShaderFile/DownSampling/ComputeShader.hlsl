@@ -18,8 +18,8 @@ SamplerState smp : register(s0);
 //それぞれのスレッドで使用するUV座標を求めるのに使用
 cbuffer DispatchData : register(b0)
 {
-	float dispatchX;
-	float dispatchY;
+	uint dispatchX;
+	uint dispatchY;
 }
 
 //共有メモリ

@@ -34,10 +34,10 @@ namespace pdx12
 			srcLocation.PlacedFootprint = footprint;
 		}
 		srcLocation.PlacedFootprint.Offset = 0;
-		srcLocation.PlacedFootprint.Footprint.Width = width;
+		srcLocation.PlacedFootprint.Footprint.Width = static_cast<UINT>(width);
 		srcLocation.PlacedFootprint.Footprint.Height = height;
 		srcLocation.PlacedFootprint.Footprint.Depth = 1;
-		srcLocation.PlacedFootprint.Footprint.RowPitch = uploadResourceRowPitch;
+		srcLocation.PlacedFootprint.Footprint.RowPitch = static_cast<UINT>(uploadResourceRowPitch);
 		srcLocation.PlacedFootprint.Footprint.Format = dstDesc.Format;
 
 		dstLocation.pResource = dstResource;
