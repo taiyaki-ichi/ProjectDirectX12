@@ -1,6 +1,6 @@
 #include"Header.hlsli"
 
-int Alignment(int size, int alignment) {
+uint Alignment(uint size, uint alignment) {
 	return size + alignment - size % alignment;
 }
 
@@ -28,7 +28,7 @@ float3 CalcDirectionLight(float3 normal, float3 toEye)
 
 float3 CalcPointLight(float2 uv,float3 worldPos,float3 normal,float3 toEye)
 {
-	int screenWidth = Alignment(cameraData.screenWidth, TILE_WIDTH);
+	uint screenWidth = Alignment(cameraData.screenWidth, TILE_WIDTH);
 
 	//スクリーンをタイルで分割した時のセルのX座標
 	uint numCellX = (screenWidth + TILE_WIDTH - 1) / TILE_WIDTH;
@@ -95,9 +95,11 @@ PSOutput main(VSOutput input)
 	output.color = float4(ambient + directionLightColor + pointLightColor, 1.f);
 
 	float4 lightPos[SHADOW_MAP_NUM];
+	[unroll]
 	for (int i = 0; i < SHADOW_MAP_NUM; i++)
 		lightPos[i] = mul(lightData.directionLightViewProj[i], worldPosition);
 
+	[unroll]
 	for (int i = 0; i < SHADOW_MAP_NUM; i++)
 	{
 		float z = lightPos[i].z / lightPos[i].w;
@@ -132,7 +134,7 @@ PSOutput main(VSOutput input)
 		}
 	}
 
-	float y = dot(float3(0.299f, 0.587f, 0.114f), output.color);
+	float y = dot(float3(0.299f, 0.587f, 0.114f), output.color.rgb);
 	output.highLuminance = y > 0.99f ? output.color : 0.0f;
 	output.highLuminance.a = 1.0;
 

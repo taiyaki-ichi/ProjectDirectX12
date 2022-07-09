@@ -32,7 +32,7 @@ cbuffer PostEffectData : register(b2)
 Texture2D<float4> mainColorTexture: register(t0);
 Texture2D<float4> shrinkedHighLuminanceTexture[SHRINK_HIGHT_LUMINANCE_TEXTURE_NUM]: register(t1);
 Texture2D<float4> shrinkedMainColorTexture[SHRINK_MAIN_COLOR_TEXTURE_NUM]: register(t5);
-Texture2D<float4> depthBuffer: register(t9);
+Texture2D<float> depthBuffer: register(t9);
 
 SamplerState smp: register(s0);
 

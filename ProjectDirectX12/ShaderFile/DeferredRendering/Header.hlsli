@@ -16,7 +16,7 @@ Texture2D<float4> normalTexture: register(t1);
 Texture2D<float4> worldPositionTexture: register(t2);
 Texture2D<float> depthBuffer: register(t3);
 
-Texture2D<float4> shadowMap[SHADOW_MAP_NUM] : register(t4);
+Texture2D<float> shadowMap[SHADOW_MAP_NUM] : register(t4);
 
 StructuredBuffer<uint> pointLightIndexBuffer : register(t7);
 

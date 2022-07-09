@@ -52,6 +52,7 @@ void main(uint groupIndex : SV_GroupIndex, uint3 dispatchThreadID : SV_DispatchT
 	//‘Ò‚Â
 	GroupMemoryBarrierWithGroupSync();
 
+	[unroll]
 	for (uint i = 0; i < RESULT_TEXTURE_NUM; i++)
 	{
 		calcPixelColor(i, parity, groupIndex, dispatchThreadID);

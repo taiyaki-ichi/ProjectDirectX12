@@ -54,6 +54,7 @@ float4 getTexture5x5GaussianBlur(Texture2D<float4> tex, SamplerState smp, float2
 float4 main(VSOutput input) : SV_TARGET
 {
 	float4 highLuminanceSum = float4(0.f, 0.f, 0.f, 0.f);
+	[unroll]
 	for (int i = 0; i < SHRINK_HIGHT_LUMINANCE_TEXTURE_NUM; i++)
 	{
 		float width, height, miplevels;
