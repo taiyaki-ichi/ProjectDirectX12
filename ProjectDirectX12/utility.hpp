@@ -32,7 +32,7 @@ namespace pdx12
 	using release_unique_ptr = std::unique_ptr<T, release_deleter<T>>;
 
 
-	//戻り値はsrc、dstの順
+	// 戻り値はsrc、dstの順
 	std::pair<D3D12_TEXTURE_COPY_LOCATION, D3D12_TEXTURE_COPY_LOCATION> get_texture_copy_location(ID3D12Device* device, ID3D12Resource* srcResource, ID3D12Resource* dstResource);
 
 	template<typename T>
@@ -44,13 +44,13 @@ namespace pdx12
 	}
 
 
-	//視錐台の8頂点の導出
+	// 視錐台の8頂点の導出
 	void get_frustum_vertex(XMFLOAT3 const& eye, float asspect, float nearZ, float farZ, float viewAngle, XMFLOAT3 const& cameraForward, XMFLOAT3 const& cameraRight, std::array<XMFLOAT3, 8>& result);
 
-	//行列をかける
+	// 行列をかける
 	void apply(XMFLOAT3& float3, XMMATRIX const& matrix);
 
-	//クロップ行列を求める
+	// クロップ行列を求める
 	void get_clop_matrix(std::array<XMFLOAT3, 8> const& float3, XMMATRIX& matrix);
 
 }

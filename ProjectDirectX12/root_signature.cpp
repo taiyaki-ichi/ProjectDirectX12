@@ -9,7 +9,7 @@ namespace pdx12
 	{
 		std::vector<std::vector<D3D12_DESCRIPTOR_RANGE>> descriptorRanges{};
 
-		//配列の構造をもとにレジスタの番号を振っりD3D12_DESCRIPTOR_RANGEを作っていく
+		// 配列の構造をもとにレジスタの番号を振っりD3D12_DESCRIPTOR_RANGEを作っていく
 		{
 			descriptorRanges.reserve(descriptorRangeTypes.size());
 
@@ -37,7 +37,7 @@ namespace pdx12
 
 		std::vector<D3D12_ROOT_PARAMETER> descriptorTables{};
 
-		//descriptorRangesをもとにディスクリプタテーブルを作成
+		// descriptorRangesをもとにディスクリプタテーブルを作成
 		{
 			descriptorTables.reserve(descriptorRanges.size());
 

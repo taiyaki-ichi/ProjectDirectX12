@@ -11,7 +11,7 @@ namespace pdx12
 	{
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC graphicsPipelineDesc{};
 
-		//シェーダの設定
+		// シェーダの設定
 		if (shaderDescs.vertex_shader) {
 			graphicsPipelineDesc.VS.pShaderBytecode = shaderDescs.vertex_shader->GetBufferPointer();
 			graphicsPipelineDesc.VS.BytecodeLength = shaderDescs.vertex_shader->GetBufferSize();
@@ -46,12 +46,12 @@ namespace pdx12
 
 		graphicsPipelineDesc.InputLayout.pInputElementDescs = inputElementDescs.data();
 		graphicsPipelineDesc.InputLayout.NumElements = static_cast<UINT>(inputElementDescs.size());
-		graphicsPipelineDesc.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;//カット値はナシ
+		graphicsPipelineDesc.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;// カット値はナシ
 		graphicsPipelineDesc.PrimitiveTopologyType = primitiveTopologyType;
 
 
 
-		//ラスタライザの設定
+		// ラスタライザの設定
 		D3D12_RASTERIZER_DESC rasterizerDesc{};
 		rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
 		rasterizerDesc.CullMode = D3D12_CULL_MODE_NONE;
@@ -68,7 +68,7 @@ namespace pdx12
 		graphicsPipelineDesc.RasterizerState = rasterizerDesc;
 
 
-		//ブレンドステート
+		// ブレンドステート
 		D3D12_RENDER_TARGET_BLEND_DESC renderTagetBlendDesc{};
 		if (alphaBlend)
 		{
@@ -113,12 +113,12 @@ namespace pdx12
 		graphicsPipelineDesc.DepthStencilState = depthStencilDesc;
 
 
-		//サンプルディスク
+		// サンプルディスク
 		graphicsPipelineDesc.SampleDesc.Count = 1;
 		graphicsPipelineDesc.SampleDesc.Quality = 0;
 
 
-		//これないとまずい
+		// これないとまずい
 		graphicsPipelineDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
 
 

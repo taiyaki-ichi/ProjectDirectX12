@@ -24,7 +24,7 @@ namespace pdx12
 
 		ID3D12Resource* tmp = nullptr;
 
-		//D3D12_HEAP_TYPE_UPLOADの場合の初期状態はD3D12_RESOURCE_STATE_GENERIC_READ
+		// D3D12_HEAP_TYPE_UPLOADの場合の初期状態はD3D12_RESOURCE_STATE_GENERIC_READ
 		D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
 
 		if (FAILED(device->CreateCommittedResource(
@@ -128,7 +128,7 @@ namespace pdx12
 		return { release_unique_ptr<ID3D12Resource>{tmp}, initialState };
 	}
 
-	//リソースバリアを作成しresource.secondを更新
+	// リソースバリアを作成しresource.secondを更新
 	void resource_barrior(ID3D12GraphicsCommandList* list, resource_and_state& resource, D3D12_RESOURCE_STATES afterState)
 	{
 		D3D12_RESOURCE_BARRIER barrier{};

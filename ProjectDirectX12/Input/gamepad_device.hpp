@@ -9,7 +9,7 @@ namespace pdx12
 	public:
 		void initialize(IDirectInput8W*, HWND);
 
-		//‰¼
+		// ‰¼
 		DIJOYSTATE get_state();
 	};
 }

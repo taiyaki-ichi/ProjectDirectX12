@@ -48,7 +48,7 @@ namespace pdx12
 	}
 
 
-	//視錐台の8頂点の導出
+	// 視錐台の8頂点の導出
 	void get_frustum_vertex(XMFLOAT3 const& eye, float asspect, float nearZ, float farZ, float viewAngle, XMFLOAT3 const& cameraForward, XMFLOAT3 const& cameraRight, std::array<XMFLOAT3, 8>& result)
 	{
 		XMVECTOR tmpResult{};
@@ -96,7 +96,7 @@ namespace pdx12
 		XMStoreFloat3(&result[7], tmpResult);
 	}
 
-	//行列をかける
+	// 行列をかける
 	void apply(XMFLOAT3& float3, XMMATRIX const& matrix)
 	{
 		auto float3Vector = XMLoadFloat3(&float3);
@@ -104,7 +104,7 @@ namespace pdx12
 		XMStoreFloat3(&float3, result);
 	}
 
-	//クロップ行列を求める
+	// クロップ行列を求める
 	void get_clop_matrix(std::array<XMFLOAT3, 8> const& float3, XMMATRIX& matrix)
 	{
 		auto [minXIter, maxXIter] = std::minmax_element(float3.begin(), float3.end(),

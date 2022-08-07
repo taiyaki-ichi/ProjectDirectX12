@@ -1,20 +1,20 @@
 #include"../CameraData.hlsli"
 #include"../LightData.hlsli"
 
-//縮小された高輝度のテクスチャの数
+// 縮小された高輝度のテクスチャの数
 #define SHRINK_HIGHT_LUMINANCE_TEXTURE_NUM 4
 
-//縮小されたメインカラーのテクスチャの数
+// 縮小されたメインカラーのテクスチャの数
 #define SHRINK_MAIN_COLOR_TEXTURE_NUM 4
 
 
-//使ってないかも
+// 使ってないかも
 cbuffer CameraDataConstantBuffer : register(b0)
 {
 	CameraData cameraData;
 }
 
-//使ってないかも
+// 使ってないかも
 cbuffer LightDataConstantBuffer : register(b1)
 {
 	LightData lightData;

@@ -9,6 +9,6 @@
 
 namespace pdx12
 {
-	//ファイル名、関数名、インクルードオプション
+	// ファイル名、関数名、インクルードオプション
 	release_unique_ptr<ID3DBlob> create_shader(const wchar_t* fileName, const char* funcName, const char* includeOption);
 }

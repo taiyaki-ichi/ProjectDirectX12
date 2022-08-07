@@ -14,6 +14,6 @@ namespace pdx12
 
 	resource_and_state create_commited_buffer_resource(ID3D12Device* device, UINT64 size, D3D12_RESOURCE_FLAGS flags);
 
-	//リソースバリアを作成しresource.secondを更新
+	// リソースバリアを作成しresource.secondを更新
 	void resource_barrior(ID3D12GraphicsCommandList* list, resource_and_state& resource, D3D12_RESOURCE_STATES afterState);
 }

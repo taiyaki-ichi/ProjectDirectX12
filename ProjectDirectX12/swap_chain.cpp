@@ -12,7 +12,7 @@ namespace pdx12
 		{
 			IDXGIFactory4* tmp = nullptr;
 
-			//構成がデバックの場合はデバッグ用のフラグを立てて生成する
+			// 構成がデバックの場合はデバッグ用のフラグを立てて生成する
 #ifdef _DEBUG
 			if (FAILED(CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&tmp))))
 				THROW_PDX12_EXCEPTION("failed CreateDXGIFactory2");
@@ -29,7 +29,7 @@ namespace pdx12
 		{
 			IDXGISwapChain3* tmp = nullptr;
 
-			//ウィンドウの大きさを取得する用
+			// ウィンドウの大きさを取得する用
 			RECT windowRect{};
 			GetWindowRect(hwnd, &windowRect);
 
