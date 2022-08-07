@@ -2,10 +2,14 @@
 
 namespace pdx12
 {
-	// コールバック用
+	// メッセージを処理するためのコールバック関数を設定するために
+	// その関数のポインタが必要になるので定義している
+	// この関数は外部から参照される必要がないので無名名前空間でくくった方がいいかも?
 	LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	{
+		//　ウィンドウが破壊された時
 		if (msg == WM_DESTROY) {
+			// この関数がメッセージキューにWM_QUITを投げる
 			PostQuitMessage(0);
 			return 0;
 		}
@@ -29,6 +33,8 @@ namespace pdx12
 		// ウィンドウサイズの設定
 		RECT rect{ 0,0,width,height };
 
+		// TODO: CreateWindowが64bit環境ではCreateWindowW, 32bit環境ではCreateWindowAに展開されるので
+		// 文字のサイズについて対応が必要
 		HWND hwnd = CreateWindow(
 			wcex.lpszClassName,			// クラス名
 			window_name,				// タイトルバー
@@ -49,14 +55,13 @@ namespace pdx12
 		return hwnd;
 	}
 
-	// メッセージの処理
+
 	bool update_window()
 	{
-		MSG msg;
+		MSG msg{};
 		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
 			DispatchMessage(&msg);
 
-		// 終了のメッセージならばfalse
 		if (msg.message == WM_QUIT)
 			return false;
 		else
