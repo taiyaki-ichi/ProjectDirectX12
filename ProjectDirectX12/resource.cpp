@@ -129,6 +129,7 @@ namespace pdx12
 	}
 
 	// リソースバリアを作成しresource.secondを更新
+	// TODO: 現在のD3D12_RESOURCE_STATESとafterStateが同じな場合エラー出た気がする
 	void resource_barrior(ID3D12GraphicsCommandList* list, resource_and_state& resource, D3D12_RESOURCE_STATES afterState)
 	{
 		D3D12_RESOURCE_BARRIER barrier{};
