@@ -416,6 +416,7 @@ int main()
 	}
 
 	// ポイントライトのインデックスを格納するリソース
+	// create_commited_texture_resourceを使った方が良さげ
 	auto pointLightIndexResource = pdx12::create_commited_buffer_resource(device.get(), sizeof(int) * MAX_POINT_LIGHT_NUM * LIGHT_CULLING_TILE_NUM, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 
 	// 
