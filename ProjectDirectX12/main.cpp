@@ -945,7 +945,7 @@ int main()
 			tps.target.y += padData.rgbButtons[7] == 0x80 ? 1.f : 0.f;
 			tps.target.y -= padData.rgbButtons[6] == 0x80 ? 1.f : 0.f;
 
-			eye = pdx12::GetEye(tps);
+			eye = pdx12::GetEyePosition(tps);
 			target = tps.target;
 		}
 
