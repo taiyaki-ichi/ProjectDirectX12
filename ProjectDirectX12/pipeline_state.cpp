@@ -11,7 +11,12 @@ namespace pdx12
 	{
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC graphicsPipelineDesc{};
 
+		graphicsPipelineDesc.PrimitiveTopologyType = primitiveTopologyType;
+		graphicsPipelineDesc.pRootSignature = rootSignature;
+
+		//
 		// シェーダの設定
+		//
 		if (shaderDescs.vertex_shader) {
 			graphicsPipelineDesc.VS.pShaderBytecode = shaderDescs.vertex_shader->GetBufferPointer();
 			graphicsPipelineDesc.VS.BytecodeLength = shaderDescs.vertex_shader->GetBufferSize();
@@ -34,7 +39,9 @@ namespace pdx12
 		}
 
 
-
+		//
+		// 入力情報の設定
+		//
 		std::vector<D3D12_INPUT_ELEMENT_DESC> inputElementDescs(inputElements.size());
 		for (std::size_t i = 0; i < inputElements.size(); i++)
 		{
@@ -46,12 +53,11 @@ namespace pdx12
 
 		graphicsPipelineDesc.InputLayout.pInputElementDescs = inputElementDescs.data();
 		graphicsPipelineDesc.InputLayout.NumElements = static_cast<UINT>(inputElementDescs.size());
-		graphicsPipelineDesc.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;// カット値はナシ
-		graphicsPipelineDesc.PrimitiveTopologyType = primitiveTopologyType;
 
 
-
+		//
 		// ラスタライザの設定
+		//
 		D3D12_RASTERIZER_DESC rasterizerDesc{};
 		rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
 		rasterizerDesc.CullMode = D3D12_CULL_MODE_NONE;
@@ -68,7 +74,9 @@ namespace pdx12
 		graphicsPipelineDesc.RasterizerState = rasterizerDesc;
 
 
-		// ブレンドステート
+		//
+		// ブレンドステートの設定
+		//
 		D3D12_RENDER_TARGET_BLEND_DESC renderTagetBlendDesc{};
 		if (alphaBlend)
 		{
@@ -97,10 +105,16 @@ namespace pdx12
 		graphicsPipelineDesc.BlendState = blendDesc;
 
 
+		//
+		// レンダーターゲットの設定
+		//
 		graphicsPipelineDesc.NumRenderTargets = static_cast<UINT>(renderTargetFormats.size());
 		std::copy(renderTargetFormats.begin(), renderTargetFormats.end(), std::begin(graphicsPipelineDesc.RTVFormats));
 
 
+		//
+		// デプスステンシルの設定
+		//
 		D3D12_DEPTH_STENCIL_DESC depthStencilDesc{};
 		depthStencilDesc.DepthEnable = depthEnable;
 		if (depthEnable) {
@@ -113,16 +127,22 @@ namespace pdx12
 		graphicsPipelineDesc.DepthStencilState = depthStencilDesc;
 
 
-		// サンプルディスク
+		//
+		// サンプルディスクの設定
+		//
 		graphicsPipelineDesc.SampleDesc.Count = 1;
 		graphicsPipelineDesc.SampleDesc.Quality = 0;
 
 
+		//
+		// その他
+		//
+
+		graphicsPipelineDesc.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;// カット値はナシ
+
 		// これないとまずい
 		graphicsPipelineDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
 
-
-		graphicsPipelineDesc.pRootSignature = rootSignature;
 
 
 		ID3D12PipelineState* tmp = nullptr;
