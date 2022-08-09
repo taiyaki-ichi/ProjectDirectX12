@@ -15,10 +15,10 @@ namespace pdx12
 
 	class mouse_device
 	{
-		//x,yの順
+		// x,yの順
 		std::pair<float, float> m_pos{};
 
-		//x,yの順
+		// x,yの順
 		std::pair<float, float> m_relative_pos{};
 
 		DIMOUSESTATE m_curr_state{};
@@ -35,7 +35,7 @@ namespace pdx12
 
 		std::pair<float, float> const& get_pos();
 
-		//前にupdateを呼び出してからの想定的な位置
+		// 前にupdateを呼び出してからの想定的な位置
 		std::pair<float, float> const& get_relative_pos();
 
 		button_state get_button_state(mouse_button_type);

@@ -5,14 +5,16 @@
 namespace pdx12
 {
 	release_unique_ptr<ID3D12RootSignature> create_root_signature(ID3D12Device* device,
-		std::vector<std::vector<descriptor_range_type>> const& descriptorRangeTypes, const std::vector<static_sampler>& staticSamplers)
+		std::vector<std::vector<descriptor_range_type>> const& descriptorRangeTypes, std::vector<static_sampler> const& staticSamplers)
 	{
 		std::vector<std::vector<D3D12_DESCRIPTOR_RANGE>> descriptorRanges{};
 
-		//配列の構造をもとにレジスタの番号を振っりD3D12_DESCRIPTOR_RANGEを作っていく
+		// 配列の構造をもとにレジスタの番号を振り, D3D12_DESCRIPTOR_RANGEを作っていく
 		{
 			descriptorRanges.reserve(descriptorRangeTypes.size());
 
+			// すでに割り振ったレジスタを記録する用
+			// ディスクリプタレンジ種類は4つなので配列のサイズは4
 			std::array<std::uint32_t, 4> registerNums{};
 
 			for (auto& rangeTypes : descriptorRangeTypes) {
@@ -27,6 +29,8 @@ namespace pdx12
 					descriptorRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
 					ranges.push_back(std::move(descriptorRange));
+
+					// 使用済みレジスタのカウントを更新する
 					registerNums[static_cast<D3D12_DESCRIPTOR_RANGE_TYPE>(t.descriptorRangeType)] += t.num;
 				}
 
@@ -37,7 +41,7 @@ namespace pdx12
 
 		std::vector<D3D12_ROOT_PARAMETER> descriptorTables{};
 
-		//descriptorRangesをもとにディスクリプタテーブルを作成
+		// descriptorRangesをもとにディスクリプタテーブルを作成
 		{
 			descriptorTables.reserve(descriptorRanges.size());
 
@@ -88,8 +92,9 @@ namespace pdx12
 		ID3DBlob* errorBlob = nullptr;
 		release_unique_ptr<ID3D12RootSignature> result{};
 
-		if (D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1_0, &rootSigBlob, &errorBlob))
+		if (FAILED(D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1_0, &rootSigBlob, &errorBlob)))
 		{
+			// エラーの情報の取り出し
 			std::string errstr{};
 			errstr.resize(errorBlob->GetBufferSize());
 			std::copy_n((char*)errorBlob->GetBufferPointer(), errorBlob->GetBufferSize(), errstr.begin());
@@ -105,6 +110,8 @@ namespace pdx12
 		}
 
 		result.reset(tmp);
+
+		// もう使わないから解放
 		rootSigBlob->Release();
 
 		return result;

@@ -12,7 +12,6 @@ namespace pdx12
 		{
 			IDXGIFactory4* tmp = nullptr;
 
-			//構成がデバックの場合はデバッグ用のフラグを立てて生成する
 #ifdef _DEBUG
 			if (FAILED(CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&tmp))))
 				THROW_PDX12_EXCEPTION("failed CreateDXGIFactory2");
@@ -24,12 +23,13 @@ namespace pdx12
 			factory.reset(tmp);
 		}
 
+
 		release_unique_ptr<IDXGISwapChain3> swapChain{};
 
 		{
 			IDXGISwapChain3* tmp = nullptr;
 
-			//ウィンドウの大きさを取得する用
+			// ウィンドウの大きさを取得する用
 			RECT windowRect{};
 			GetWindowRect(hwnd, &windowRect);
 
@@ -48,11 +48,14 @@ namespace pdx12
 			swapchainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
 
+			// ここでCommandQueueが必要なのなんでだろ
+			// 同期したりする時には必要そうかな
 			if (FAILED(factory->CreateSwapChainForHwnd(commandQueue, hwnd, &swapchainDesc, nullptr, nullptr, (IDXGISwapChain1**)&tmp)))
 				THROW_PDX12_EXCEPTION("failed CreateSwapChainForHwnd");
 
 			swapChain.reset(tmp);
 		}
+
 
 		return swapChain;
 	}

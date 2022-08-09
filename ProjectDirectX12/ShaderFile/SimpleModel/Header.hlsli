@@ -6,7 +6,7 @@ cbuffer CameraDataConstantBuffer : register(b0)
 	CameraData cameraData;
 }
 
-//‚¢‚ç‚È‚¢Š›
+// ‚¢‚ç‚È‚¢Š›
 cbuffer LightDataConstantBuffer : register(b1)
 {
 	LightData lightData;

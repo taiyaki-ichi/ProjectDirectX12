@@ -71,7 +71,7 @@ namespace pdx12
 		UINT numElements, UINT structureByteStride, UINT firstElement, D3D12_BUFFER_SRV_FLAGS flags)
 	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC desc{};
-		//ViewDimensio‚ªBuffer‚Ìê‡‚ÍFormat‚ÍUnknownŒÅ’è‚Á‚Û‚¢
+		// ViewDimensio‚ªBuffer‚Ìê‡‚ÍFormat‚ÍUnknownŒÅ’è‚Á‚Û‚¢
 		desc.Format = DXGI_FORMAT_UNKNOWN;
 		desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 		desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
@@ -110,7 +110,7 @@ namespace pdx12
 		ID3D12Resource* counterResource, UINT numElements, UINT structureByteStride, UINT firstElement, UINT counterOffsetInBytes, D3D12_BUFFER_UAV_FLAGS flags)
 	{
 		D3D12_UNORDERED_ACCESS_VIEW_DESC desc{};
-		//ViewDimensio‚ªBuffer‚Ìê‡‚ÍFormat‚ÍUnknownŒÅ’è‚Á‚Û‚¢
+		// ViewDimensio‚ªBuffer‚Ìê‡‚ÍFormat‚ÍUnknownŒÅ’è‚Á‚Û‚¢
 		desc.Format = DXGI_FORMAT_UNKNOWN;
 		desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 		desc.Buffer.NumElements = numElements;

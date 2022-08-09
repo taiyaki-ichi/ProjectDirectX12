@@ -30,16 +30,16 @@ float3 CalcPointLight(float2 uv,float3 worldPos,float3 normal,float3 toEye)
 {
 	uint screenWidth = Alignment(cameraData.screenWidth, TILE_WIDTH);
 
-	//スクリーンをタイルで分割した時のセルのX座標
+	// スクリーンをタイルで分割した時のセルのX座標
 	uint numCellX = (screenWidth + TILE_WIDTH - 1) / TILE_WIDTH;
 
-	//タイルのインデックス
+	// タイルのインデックス
 	uint tileIndex = floor(uv.x / TILE_WIDTH) + floor(uv.y / TILE_HEIGHT) * numCellX;
 
-	//このピクセルが含まれるタイルのライトインデックスのリストの開始位置
+	// このピクセルが含まれるタイルのライトインデックスのリストの開始位置
 	uint indexStart = tileIndex * lightData.pointLightNum;
 
-	//このピクセルが含まれるライトインデックスのリストの終了位置
+	// このピクセルが含まれるライトインデックスのリストの終了位置
 	uint indexEnd = indexStart + lightData.pointLightNum;
 
 	float3 result = float3(0.f, 0.f, 0.f);
@@ -56,13 +56,13 @@ float3 CalcPointLight(float2 uv,float3 worldPos,float3 normal,float3 toEye)
 		float3 lightDir = normalize(worldPos.xyz - lightData.pointLight[pointLightIndex].pos.xyz);
 		float distance = length(worldPos.xyz - lightData.pointLight[pointLightIndex].pos.xyz);
 
-		//影響率
+		// 影響率
 		float affect = 1.f - min(1.f, distance / lightData.pointLight[pointLightIndex].range);
 
-		//affectの値を線形から変更する
-		//そしたらスぺきゅらの計算を行う
+		// affectの値を線形から変更する
+		// そしたらスぺきゅらの計算を行う
 		result += CalcDiffuse(lightDir, lightData.pointLight[pointLightIndex].color, normal) * affect;
-		//result += CalcSpecular(lightDir, lightData.pointLight[pointLightIndex].color, normal, toEye) * affect;
+		// result += CalcSpecular(lightDir, lightData.pointLight[pointLightIndex].color, normal, toEye) * affect;
 	}
 	
 	return result;
@@ -83,7 +83,7 @@ PSOutput main(VSOutput input)
 	}
 
 	float3 normal = normalTexture.Sample(smp, input.uv).xyz;
-	//-1,1の範囲に収める
+	// -1,1の範囲に収める
 	normal = (normal * 2.f) - 1.f;
 	float4 worldPosition = float4(worldPositionTexture.Sample(smp, input.uv).xyz, 1.f);
 	float3 toEye = normalize(cameraData.eyePos.xyz - worldPosition.xyz);
