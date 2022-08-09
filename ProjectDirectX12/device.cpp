@@ -10,7 +10,6 @@ namespace pdx12
 	pdx12::release_unique_ptr<ID3D12Device> create_device()
 	{
 
-		// デバッグモードでコンパイルされた場合
 #ifdef _DEBUG
 		ID3D12Debug* debugLayer = nullptr;
 		if (FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugLayer))))
