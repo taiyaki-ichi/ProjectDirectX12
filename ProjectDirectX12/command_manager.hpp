@@ -10,6 +10,7 @@
 namespace pdx12
 {
 
+	// コマンドアロケータの数はコンパイル時に決まってる気がする
 	template<std::size_t AllocatorNum>
 	class command_manager
 	{
@@ -17,14 +18,14 @@ namespace pdx12
 
 		release_unique_ptr<ID3D12GraphicsCommandList> list{};
 
+		// 非同期に処理する場合, CommandQueueとCommandListは1つでイイがAllocatorは複数作成しないとダメ
 		std::array<release_unique_ptr<ID3D12CommandAllocator>, AllocatorNum> allocators{};
 
+		// allocatorsのインデックスと同じ数用意し, 任意のタイミングで待つことができるようにする
 		std::array<release_unique_ptr<ID3D12Fence>, AllocatorNum> fences{};
-
 		std::array<std::uint64_t, AllocatorNum> fence_values{};
 
-		// WaitForSingleObjectを呼び出すために必要
-		// TODO: メンバで保持する必要があるのか調べる
+		// フェンスの値が指定した値になるまで待つイベントを扱う用
 		HANDLE fence_event_handle = nullptr;
 
 		// 現在のlistが使用しているallocaotrのインデックス
@@ -41,13 +42,16 @@ namespace pdx12
 		void wait(std::size_t index);
 
 		// index番目のAllocatorでリストをリセット
+		// 以降積まれたコマンドはindex番目のアロケータに積まれることになる
 		void reset_list(std::size_t index);
+
 
 
 		void excute();
 
 		// excuteがあるからdispatchもここに作っておく
 		void dispatch(std::uint32_t threadGroupCountX, std::uint32_t threadGroupCountY, std::uint32_t threadGroupCountZ);
+
 
 
 		ID3D12GraphicsCommandList* get_list();
@@ -108,7 +112,6 @@ namespace pdx12
 			fences[i].reset(tmp);
 		}
 
-		// TODO: 必要なんですか？
 		fence_event_handle = CreateEvent(NULL, FALSE, FALSE, NULL);
 
 		// 作成時のlistはcloseされていないので呼び出す必要がある
@@ -119,7 +122,9 @@ namespace pdx12
 	template<std::size_t AllocatorNum>
 	inline void pdx12::command_manager<AllocatorNum>::signal()
 	{
+		// インクリメントして以前に使用した値を変更する
 		fence_values[current_allocaotr_index]++;
+		// 設定されているアロケータのインデックスに対応したフェンスを使用する
 		queue->Signal(fences[current_allocaotr_index].get(), fence_values[current_allocaotr_index]);
 	}
 
@@ -128,7 +133,11 @@ namespace pdx12
 	{
 		if (fences[index]->GetCompletedValue() < fence_values[index])
 		{
+			// fenceの値が指定した値になっていない
+			// つまりシグナルを立てた場所までの処理が終わっていない場合
+			// フェンスの値が指定した値になった時に発火するイベントを設定する
 			fences[index]->SetEventOnCompletion(fence_values[index], fence_event_handle);
+			// イベントが発火するのを待つ
 			WaitForSingleObject(fence_event_handle, INFINITE);
 		}
 	}
