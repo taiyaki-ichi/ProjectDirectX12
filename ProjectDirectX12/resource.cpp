@@ -24,7 +24,7 @@ namespace pdx12
 
 		ID3D12Resource* tmp = nullptr;
 
-		//D3D12_HEAP_TYPE_UPLOADの場合の初期状態はD3D12_RESOURCE_STATE_GENERIC_READ
+		// D3D12_HEAP_TYPE_UPLOADの場合の初期状態はD3D12_RESOURCE_STATE_GENERIC_READ
 		D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
 
 		if (FAILED(device->CreateCommittedResource(
@@ -43,7 +43,7 @@ namespace pdx12
 
 
 	resource_and_state create_commited_texture_resource(ID3D12Device* device,
-		DXGI_FORMAT format, UINT64 width, UINT64 height, std::size_t dimension, UINT16 depthOrArraySize, UINT16 mipLevels, D3D12_RESOURCE_FLAGS flags, D3D12_CLEAR_VALUE const* clearValue)
+		DXGI_FORMAT format, UINT64 width, UINT height, std::size_t dimension, UINT16 depthOrArraySize, UINT16 mipLevels, D3D12_RESOURCE_FLAGS flags, D3D12_CLEAR_VALUE const* clearValue)
 	{
 		D3D12_HEAP_PROPERTIES heapProperties{};
 		heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
@@ -128,7 +128,8 @@ namespace pdx12
 		return { release_unique_ptr<ID3D12Resource>{tmp}, initialState };
 	}
 
-	//リソースバリアを作成しresource.secondを更新
+	// リソースバリアを作成しresource.secondを更新
+	// TODO: 現在のD3D12_RESOURCE_STATESとafterStateが同じな場合エラー出た気がする
 	void resource_barrior(ID3D12GraphicsCommandList* list, resource_and_state& resource, D3D12_RESOURCE_STATES afterState)
 	{
 		D3D12_RESOURCE_BARRIER barrier{};

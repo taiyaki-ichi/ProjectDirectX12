@@ -12,30 +12,30 @@ cbuffer LightData : register(b1)
 	LightData lightData;
 }
 
-//デプスバッファ
+// デプスバッファ
 Texture2D<float> depthBuffer : register(t0);
 
-//出力
-//影響を受けるライトの添え字が格納される
+// 出力
+// 影響を受けるライトの添え字が格納される
 RWStructuredBuffer<uint> pointLightIndexBuffer : register(u0);
 
 SamplerState smp: register(s0);
 
-//共有メモリ
-//タイルの最小深度
+// 共有メモリ
+// タイルの最小深度
 groupshared uint minZ;
-//タイルの最大深度
+// タイルの最大深度
 groupshared uint maxZ;
-//タイルに影響するポイントライトのインデックス
+// タイルに影響するポイントライトのインデックス
 groupshared uint tileLightIndex[MAX_POINT_LIGHT_NUM];
-//タイルに影響するポイントライトの数
+// タイルに影響するポイントライトの数
 groupshared uint tileLightNum;
 
 
-//タイルごとの視推台を求める
+// タイルごとの視推台を求める
 void GetTileFrustumPlane(out float4 frustumPlanes[6], uint3 groupID)
 {
-	//タイルの最大最小深度を浮動小数点に変換
+	// タイルの最大最小深度を浮動小数点に変換
 	float minTileZ = 0; asfloat(minZ);
 	float maxTileZ = 0x7F7FFFFF; asfloat(maxZ);
 
@@ -46,20 +46,20 @@ void GetTileFrustumPlane(out float4 frustumPlanes[6], uint3 groupID)
 	float4 c2 = float4(0.f, -cameraData.proj._22 * tileScale.y, tileBias.y, 0.f);
 	float4 c4 = float4(0.f, 0.f, 1.f, 0.f);
 
-	//右の面の法線
+	// 右の面の法線
 	frustumPlanes[0] = c4 - c1;
-	//左の面の法線
+	// 左の面の法線
 	frustumPlanes[1] = c4 + c1;
-	//上の面の法線
+	// 上の面の法線
 	frustumPlanes[2] = c4 - c2;
-	//下の面の法線
+	// 下の面の法線
 	frustumPlanes[3] = c4 + c2;
-	//奥の面の法線
+	// 奥の面の法線
 	frustumPlanes[4] = float4(0.f, 0.f, 1.f, -minTileZ);
-	//手前の面の法線
+	// 手前の面の法線
 	frustumPlanes[5] = float4(0.f, 0.f, -1.f, maxTileZ);
 
-	//正規化する
+	// 正規化する
 	[unroll]
 	for (uint i = 0; i < 4; i++)
 	{
@@ -68,10 +68,10 @@ void GetTileFrustumPlane(out float4 frustumPlanes[6], uint3 groupID)
 }
 
 
-//カメラ空間での座標を計算する
+// カメラ空間での座標を計算する
 float3 ComputePositionInCamera(uint2 globalCoords)
 {
-	//globalCoordsから-1,1の範囲に収めた座標を導出
+	// globalCoordsから-1,1の範囲に収めた座標を導出
 	float2 st = ((float2)globalCoords + 0.5) * rcp(float2(cameraData.screenWidth, cameraData.screenHeight));
 	st = st * float2(2.f, -2.f) - float2(1.f, -1.f);
 
@@ -88,14 +88,14 @@ float3 ComputePositionInCamera(uint2 globalCoords)
 [numthreads(TILE_WIDTH, TILE_HEIGHT, 1)]
 void main(uint3 groupID : SV_GroupID, uint3 dispatchThreadID : SV_DispatchThreadID,uint3 groupThreadID : SV_GroupThreadID )
 {
-	//タイル内でのインデックス
+	// タイル内でのインデックス
 	uint groupIndex = groupThreadID.y * TILE_WIDTH + groupThreadID.x;
 
-	//共有メモリの初期化
+	// 共有メモリの初期化
 	if (groupIndex == 0)
 	{
 		tileLightNum = 0;
-		minZ = 0x7F7FFFFF;//floatの最大値
+		minZ = 0x7F7FFFFF;// floatの最大値
 		maxZ = 0;
 	}
 
@@ -105,32 +105,32 @@ void main(uint3 groupID : SV_GroupID, uint3 dispatchThreadID : SV_DispatchThread
 	uint lightStart = lightData.pointLightNum * tileIndex;
 
 
-	//ビュー空間での座標
+	// ビュー空間での座標
 	float3 posInView = ComputePositionInCamera(frameUV);
 
-	//他のグループを待つ
+	// 他のグループを待つ
 	GroupMemoryBarrierWithGroupSync();
 
 
-	//タイルの最大最小深度を求める
-	//floatを直接扱うことはできないっぽい
+	// タイルの最大最小深度を求める
+	// floatを直接扱うことはできないっぽい
 	InterlockedMin(minZ, asuint(posInView.z));
 	InterlockedMax(maxZ, asuint(posInView.z));
 
-	//他のグループを待つ
+	// 他のグループを待つ
 	GroupMemoryBarrierWithGroupSync();
 
 
-	//タイルの推台を求める
+	// タイルの推台を求める
 	float4 frustumPlanes[6];
 	GetTileFrustumPlane(frustumPlanes, groupID);
 
-	//タイルとポイントライトの衝突判定
+	// タイルとポイントライトの衝突判定
 	for (uint lightIndex = groupIndex; lightIndex < lightData.pointLightNum; lightIndex += TILE_NUM)
 	{
 		PointLight pointLight = lightData.pointLight[lightIndex];
 
-		//falseなら衝突していない
+		// falseなら衝突していない
 		bool isHit = true;
 		for (uint i = 0; i < 6; i++)
 		{
@@ -139,30 +139,30 @@ void main(uint3 groupID : SV_GroupID, uint3 dispatchThreadID : SV_DispatchThread
 			isHit = isHit && (d >= -pointLight.range);
 		}
 		
-		//タイルと接触している場合
+		// タイルと接触している場合
 		if (isHit)
-		//if(true)
+		// if(true)
 		{
 			uint listIndex = 0;
-			//tileLightNumに1を加算
-			//listIndexには加算される前の値が格納される
+			// tileLightNumに1を加算
+			// listIndexには加算される前の値が格納される
 			InterlockedAdd(tileLightNum, 1, listIndex);
 			tileLightIndex[listIndex] = lightIndex;
 		}
 	}
 
-	//他のグループを待つ
+	// 他のグループを待つ
 	GroupMemoryBarrierWithGroupSync();
 
 
-	//結果を格納する
+	// 結果を格納する
 	for (uint lightIndex = groupIndex; lightIndex < tileLightNum; lightIndex += TILE_NUM)
 	{
 		pointLightIndexBuffer[lightStart + lightIndex] = tileLightIndex[lightIndex];
 	}
 
 	
-	//番兵
+	// 番兵
 	if ((groupIndex == 0) && (tileLightNum < lightData.pointLightNum))
 	{
 		pointLightIndexBuffer[lightStart + tileLightNum] = 0xffffffff;

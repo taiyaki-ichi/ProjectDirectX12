@@ -54,6 +54,7 @@ float4 getTexture5x5GaussianBlur(Texture2D<float4> tex, SamplerState smp, float2
 float4 main(VSOutput input) : SV_TARGET
 {
 	float4 highLuminanceSum = float4(0.f, 0.f, 0.f, 0.f);
+	[unroll]
 	for (int i = 0; i < SHRINK_HIGHT_LUMINANCE_TEXTURE_NUM; i++)
 	{
 		float width, height, miplevels;
@@ -64,32 +65,32 @@ float4 main(VSOutput input) : SV_TARGET
 	luminance *= luminanceDegree;
 
 
-	//深度の差
+	// 深度の差
 	float depthDiff = abs(depthBuffer.Sample(smp, depthDiffCenter) - depthBuffer.Sample(smp, input.uv));
-	//差が開きやすいようにバイアスをかける
+	// 差が開きやすいようにバイアスをかける
 	depthDiff = pow(depthDiff, depthDiffPower);
 
-	//範囲を等分
+	// 範囲を等分
 	float delta = (1.f - depthDiffLower) / ((float)SHRINK_MAIN_COLOR_TEXTURE_NUM + 1.f);
 
-	//何番目の区間か導出
+	// 何番目の区間か導出
 	float degree = (depthDiff - depthDiffLower) / delta;
 
-	//使用するテクスチャの番号を決める際に使用する
+	// 使用するテクスチャの番号を決める際に使用する
 	int n = trunc(degree);
-	//線形補完する際に使用する
+	// 線形補完する際に使用する
 	float rate = frac(degree);
 	
 	float4 mainColor = float4(0.f, 0.f, 0.f, 0.f);
-	//基準値以下の場合通常のメイカラーを使用する
-	//バイアスかける前の値でひょかした方がイイかも
+	// 基準値以下の場合通常のメイカラーを使用する
+	// バイアスかける前の値でひょかした方がイイかも
 	if (depthDiff < depthDiffLower)
 	{
 		mainColor = mainColorTexture.Sample(smp, input.uv);
 	}
 	else if (n == 0)
 	{
-		//通常のメインカラーと0番目の縮小されたメインカラーを線形補完する
+		// 通常のメインカラーと0番目の縮小されたメインカラーを線形補完する
 
 		float4 color1 = mainColorTexture.Sample(smp, input.uv);
 
@@ -101,10 +102,10 @@ float4 main(VSOutput input) : SV_TARGET
 	}
 	else
 	{
-		//n番目の縮小されたメインカラーとn+1番目に縮小されたメインカラーを線形補完する
+		// n番目の縮小されたメインカラーとn+1番目に縮小されたメインカラーを線形補完する
 
 		[unroll]
-		//for(;i < SHRINK_MAIN_COLOR_TEXTURE_NUM; i++)とは記述できない
+		// for(;i < SHRINK_MAIN_COLOR_TEXTURE_NUM; i++)とは記述できない
 		for (int i = 0; i < SHRINK_MAIN_COLOR_TEXTURE_NUM; i++)
 		{
 			if (i == n - 1)
@@ -124,7 +125,7 @@ float4 main(VSOutput input) : SV_TARGET
 		}
 	}
 
-	//被写界深度で使用する深度の差の分布を確認する用
+	// 被写界深度で使用する深度の差の分布を確認する用
 	/*
 	if (n == 0)
 	{

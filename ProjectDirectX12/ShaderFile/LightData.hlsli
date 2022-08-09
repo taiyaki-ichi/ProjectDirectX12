@@ -1,10 +1,10 @@
 
-//ポイントラインとのライトカリングの際のスレッドの数
-//タイルの大きさと同じ
+// ポイントラインとのライトカリングの際のスレッドの数
+// タイルの大きさと同じ
 #define TILE_WIDTH 16
 #define TILE_HEIGHT 16
 
-//タイルの総数
+// タイルの総数
 #define TILE_NUM (TILE_WIDTH*TILE_HEIGHT)
 
 static const int SHADOW_MAP_NUM = 3;
@@ -30,7 +30,7 @@ struct LightData
 	matrix directionLightViewProj[SHADOW_MAP_NUM];
 	
 	PointLight pointLight[MAX_POINT_LIGHT_NUM];
-	int pointLightNum;
+	uint pointLightNum;
 
 	float specPow;
 };
