@@ -4,6 +4,12 @@
 
 namespace pdx12
 {
+	//
+	// d3d12.hのビューを作成する関数では_VIEW_DESCの構造体を設定しなければいけない
+	// いちいちめんどくさいのでそれぞれに対応した関数を定義した
+	// たぶん全部網羅できていない
+	//
+
 
 	void create_CBV(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle, ID3D12Resource* resource, UINT sizeInBytes);
 
