@@ -4,29 +4,31 @@
 #define TILE_WIDTH 8
 #define TILE_HEIGHT 8
 
-//法線のテクスチャ
-Texture2D<float4> normalTexture : register(t0);
-
-//深度のテクスチャ
-Texture2D<float> depthTexture : register(t1);
-
-SamplerState smp : register(s0);
-
-//C++側から呼び出したDispatchのxとyの値の逆数（zは常に1）
-//それぞれのスレッドで使用するUV座標を求めるのに使用
-cbuffer DispatchData : register(b0)
-{
-	float dispatchX;
-	float dispatchY;
-}
-
-cbuffer CameraDataConstantBuffer : register(b1)
+cbuffer CameraDataConstantBuffer : register(b0)
 {
 	CameraData cameraData;
 }
 
+//C++側から呼び出したDispatchのxとyの値の逆数（zは常に1）
+//それぞれのスレッドで使用するUV座標を求めるのに使用
+cbuffer DispatchData : register(b1)
+{
+	uint dispatchX;
+	uint dispatchY;
+}
+
+//深度のテクスチャ
+Texture2D<float> depthTexture : register(t0);
+
+//法線のテクスチャ
+Texture2D<float4> normalTexture : register(t1);
+
 //結果を格のするテクスチャ
 RWTexture2D<float> resultTexture : register(u0);
+
+
+SamplerState smp : register(s0);
+
 
 
 //[0,1)の乱数を返す
@@ -44,9 +46,11 @@ void main(uint groupIndex : SV_GroupIndex, uint3 dispatchThreadID : SV_DispatchT
 
 	float depth = depthTexture.SampleLevel(smp, uv, 0.f);
 
+
+	// uvの位置に何も描写されていない時
 	if (depth >= 1.f)
 	{
-		resultTexture[uv] = 1.f;
+		resultTexture[dispatchThreadID.xy] = 1.f;
 		return;
 	}
 
@@ -56,15 +60,19 @@ void main(uint groupIndex : SV_GroupIndex, uint3 dispatchThreadID : SV_DispatchT
 	float dx = 1.f / depthTextureWidth;
 	float dy = 1.f / depthTextureHeight;
 
-	float4 posInView = mul(cameraData.projInv, float4(uv, depth, 1.f));
+	float4 posInView = mul(cameraData.projInv, float4(uv * float2(2.f, -2.f) + float2(-1.f, 1.f), depth, 1.f));
 	posInView.xyz = posInView.xyz / posInView.w;
 
 	float occlusion = 0.f;
 	float3 norm = normalize((normalTexture.SampleLevel(smp, uv, 0.f).xyz * 2.f) - 1.f);
+	// 平行移動はさせない
+	norm = mul(cameraData.view, float4(norm, 0.f)).xyz;
+
 
 	const int tryCnt = 256;
 	const float radius = 0.5f;
-	const float bias = 0.025f;
+	// 暗くなりすぎないようにバイアスをかける
+	const float bias = 0.0025f;
 
 	for (int i = 0; i < tryCnt; i++)
 	{
@@ -87,8 +95,12 @@ void main(uint groupIndex : SV_GroupIndex, uint3 dispatchThreadID : SV_DispatchT
 
 		float sampleDepth = depthTexture.SampleLevel(smp, samplePosUV, 0.f);
 
-		occlusion += step(sampleDepth, samplePos.z + bias);
+		float rangeCheck = smoothstep(0.0, 1.0, radius / abs(posInView.z - sampleDepth));
+
+		// sampleDepthのほうがsamplePos.z+bias以上の時
+		// つまり, 別のポリゴンに遮られているとき1を加算
+		occlusion += step(sampleDepth+bias, samplePos.z) * rangeCheck;
 	}
 	
-	resultTexture[uv] = 1.f - (occlusion / (float)tryCnt);
+	resultTexture[dispatchThreadID.xy] = 1.f - (occlusion / (float)tryCnt);
 }
