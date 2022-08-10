@@ -118,6 +118,13 @@ constexpr std::size_t LIGHT_CULLING_TILE_WIDTH = 16;
 constexpr std::size_t LIGHT_CULLING_TILE_HEIGHT = 16;
 constexpr std::size_t LIGHT_CULLING_TILE_NUM = (WINDOW_WIDTH / LIGHT_CULLING_TILE_WIDTH) * (WINDOW_HEIGHT / LIGHT_CULLING_TILE_HEIGHT);
 
+
+constexpr DXGI_FORMAT AMBIENT_OCCLUSION_RESOURCE_FORMAT = DXGI_FORMAT_R32_FLOAT;
+
+constexpr std::size_t AMBIENT_OCCLUSION_RESOURCE_WIDTH = WINDOW_WIDTH;
+constexpr std::size_t AMBIENT_OCCLUSION_RESOURCE_HEIGHT = WINDOW_HEIGHT;
+
+
 constexpr std::size_t MAX_POINT_LIGHT_NUM = 1000;
 
 struct PointLight
@@ -197,7 +204,7 @@ struct GroundData
 	XMMATRIX world;
 };
 
-struct DownSamplingData
+struct DispatchData
 {
 	std::uint32_t dispatchX;
 	std::uint32_t dispatchY;
@@ -371,14 +378,14 @@ int main()
 	}
 
 	// 高輝度をダウンサンプリングする際の定数バッファのリソース
-	auto highLuminanceDownSamplingDataResource = pdx12::create_commited_upload_buffer_resource(device.get(), pdx12::alignment<UINT64>(sizeof(DownSamplingData), 256));
+	auto highLuminanceDownSamplingDataResource = pdx12::create_commited_upload_buffer_resource(device.get(), pdx12::alignment<UINT64>(sizeof(DispatchData), 256));
 
 	// ポストエフェクトをかける前のリソース
 	auto mainColorResource = pdx12::create_commited_texture_resource(device.get(), MAIN_COLOR_RESOURCE_FORMAT, MAIN_COLOR_RESOURCE_WIDTH, MAIN_COLOR_RESOURCE_HEIGHT, 2,
 		1, 1, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, &grayClearValue);
 
 	// メインカラーをダウンサンプリングを行う際の定数バッファのリソース
-	auto mainColorDownSamplingDataResource = pdx12::create_commited_upload_buffer_resource(device.get(), pdx12::alignment<UINT64>(sizeof(DownSamplingData), 256));
+	auto mainColorDownSamplingDataResource = pdx12::create_commited_upload_buffer_resource(device.get(), pdx12::alignment<UINT64>(sizeof(DispatchData), 256));
 
 	// 縮小されたポストエフェクトをかける前のリソース
 	// 被写界深度を考慮する際に使用する
@@ -416,8 +423,17 @@ int main()
 	}
 
 	// ポイントライトのインデックスを格納するリソース
-	// create_commited_texture_resourceを使った方が良さげ
+	// TODO: create_commited_texture_resourceを使った方が良さげ
 	auto pointLightIndexResource = pdx12::create_commited_buffer_resource(device.get(), sizeof(int) * MAX_POINT_LIGHT_NUM * LIGHT_CULLING_TILE_NUM, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+
+	// アンビエントオクルージョン用のリソース
+	auto ambientOcclusionResource = pdx12::create_commited_texture_resource(device.get(), AMBIENT_OCCLUSION_RESOURCE_FORMAT, AMBIENT_OCCLUSION_RESOURCE_WIDTH, AMBIENT_OCCLUSION_RESOURCE_HEIGHT,
+		2, 1, 1, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+
+	// ssaoするときのディスパッチの情報用のリソース
+	auto ssaoDispatchDataResource = pdx12::create_commited_upload_buffer_resource(device.get(), pdx12::alignment<UINT64>(sizeof(DispatchData), 256));
+
+
 
 	// 
 	// デスクリプタヒープの作成
@@ -497,8 +513,8 @@ int main()
 	// ディファードレンダリングを行う際に利用するSRVなどを作成する用のデスクリプタヒープ
 	pdx12::descriptor_heap defferredRenderingDescriptorHeapCBVSRVUAV{};
 	{
-		// カメラのデータ、ライトのデータ、アルベドカラー、法線、ワールド座標、デプス、シャドウマップ、ポイントライトインデックス
-		defferredRenderingDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 6 + SHADOW_MAP_NUM + 1);
+		// カメラのデータ、ライトのデータ、アルベドカラー、法線、ワールド座標、デプス、シャドウマップ、ポイントライトインデックス, アンビエントオクルージョン
+		defferredRenderingDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 6 + SHADOW_MAP_NUM + 2);
 
 		// CameraData
 		pdx12::create_CBV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(0),
@@ -534,6 +550,10 @@ int main()
 		pdx12::create_buffer_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(6 + SHADOW_MAP_NUM),
 			pointLightIndexResource.first.get(), MAX_POINT_LIGHT_NUM * LIGHT_CULLING_TILE_NUM, sizeof(int), 0, D3D12_BUFFER_SRV_FLAG_NONE);
 
+		// アンビエントオクルージョン
+		pdx12::create_texture2D_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(6 + SHADOW_MAP_NUM + 1),
+			ambientOcclusionResource.first.get(), AMBIENT_OCCLUSION_RESOURCE_FORMAT, 1, 0, 0, 0.f);
+
 	}
 
 	// ディファードレンダリングでのライティングのレンダーターゲットのビューのデスクリプタヒープ
@@ -558,7 +578,7 @@ int main()
 
 		// 定数バッファのビュー
 		pdx12::create_CBV(device.get(), highLuminanceDownSamplingDescriptorHeapCBVSRVUAV.get_CPU_handle(0),
-			highLuminanceDownSamplingDataResource.first.get(), pdx12::alignment<UINT>(sizeof(DownSamplingData), 256));
+			highLuminanceDownSamplingDataResource.first.get(), pdx12::alignment<UINT>(sizeof(DispatchData), 256));
 
 		// 通常の高輝度の高輝度のビュー
 		pdx12::create_texture2D_SRV(device.get(), highLuminanceDownSamplingDescriptorHeapCBVSRVUAV.get_CPU_handle(1),
@@ -578,7 +598,7 @@ int main()
 		mainColorDownSamplingDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 2 + SHRINKED_MAIN_COLOR_RESOURCE_NUM);
 
 		pdx12::create_CBV(device.get(), mainColorDownSamplingDescriptorHeapCBVSRVUAV.get_CPU_handle(0),
-			mainColorDownSamplingDataResource.first.get(), pdx12::alignment<UINT>(sizeof(DownSamplingData), 256));
+			mainColorDownSamplingDataResource.first.get(), pdx12::alignment<UINT>(sizeof(DispatchData), 256));
 
 		// 通常のサイズのメインカラーのシェーダリソースビュー
 		pdx12::create_texture2D_SRV(device.get(), mainColorDownSamplingDescriptorHeapCBVSRVUAV.get_CPU_handle(1),
@@ -601,7 +621,7 @@ int main()
 			pdx12::create_texture2D_RTV(device.get(), frameBufferDescriptorHeapRTV.get_CPU_handle(i), frameBufferResources[i].first.get(), FRAME_BUFFER_FORMAT, 0, 0);
 	}
 
-	// ポストえっふぇくとにに利用するSRVなどを作成する用のデスクリプタヒープ
+	// ポストエフェクトに利用するSRVなどを作成する用のデスクリプタヒープ
 	pdx12::descriptor_heap postEffectDescriptorHeapCBVSRVUAV{};
 	{
 		// 1つ目はCameraData、2つ目はLightData、3つ目はポストエフェクトのデータ、4つ目は通常のカラー、5つ目から縮小された高輝度のリソース
@@ -663,6 +683,33 @@ int main()
 			MAX_POINT_LIGHT_NUM * LIGHT_CULLING_TILE_NUM, sizeof(int), 0, 0, D3D12_BUFFER_UAV_FLAG_NONE);
 	}
 
+	// ssaoするときに使用するデスクリプタヒープ
+	pdx12::descriptor_heap ssaoDescriptorHeapCBVSRVUAV{};
+	{
+		// CameraData, DispatchData, Depth, Normal, AmbientOcclusion
+		ssaoDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 5);
+
+		// CameraData
+		pdx12::create_CBV(device.get(), ssaoDescriptorHeapCBVSRVUAV.get_CPU_handle(0),
+			cameraDataResource.first.get(), pdx12::alignment<UINT>(sizeof(CameraData), 256));
+
+		// DispatchData
+		pdx12::create_CBV(device.get(), ssaoDescriptorHeapCBVSRVUAV.get_CPU_handle(1),
+			ssaoDispatchDataResource.first.get(), pdx12::alignment<UINT>(sizeof(DispatchData), 256));
+
+		// 深度バッファ
+		pdx12::create_texture2D_SRV(device.get(), ssaoDescriptorHeapCBVSRVUAV.get_CPU_handle(2),
+			depthBuffer.first.get(), AMBIENT_OCCLUSION_RESOURCE_FORMAT, 1, 0, 0, 0.f);
+
+		// 法線データ
+		pdx12::create_texture2D_SRV(device.get(), ssaoDescriptorHeapCBVSRVUAV.get_CPU_handle(3),
+			gBufferNormalResource.first.get(), G_BUFFER_NORMAL_FORMAT, 1, 0, 0, 0.f);
+
+		// AmbientOcclusion
+		pdx12::create_texture2D_UAV(device.get(), ssaoDescriptorHeapCBVSRVUAV.get_CPU_handle(4),
+			ambientOcclusionResource.first.get(), AMBIENT_OCCLUSION_RESOURCE_FORMAT, nullptr, 0, 0);
+	}
+
 
 	// 
 	// シェーダの作成
@@ -691,6 +738,10 @@ int main()
 
 	// ライトカリング用のシェーダ
 	auto lightCullingComputeShader = pdx12::create_shader(L"ShaderFile/LightCulling/ComputeShader.hlsl", "main", "cs_5_0");
+
+	// ssao用のシェーダ
+	auto ssaoComputeShader = pdx12::create_shader(L"ShaderFile/SSAO/ComputeShader.hlsl", "main", "cs_5_0");
+
 
 	// 
 	// ルートシグネチャとパイプラインの作成
@@ -730,7 +781,8 @@ int main()
 
 	auto deferredRenderingRootSignature = pdx12::create_root_signature(device.get(),
 		{ {{/*CameraData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*LightData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*アルベドカラー、法線、ワールド座標、デプスバッファの順*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,4},
-		{/*シャドウマップ*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,SHADOW_MAP_NUM},{/*ポイントライトのインデックスのリスト*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV}} },
+		{/*シャドウマップ*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,SHADOW_MAP_NUM},{/*ポイントライトのインデックスのリスト*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV},
+		{/*アンビエントオクルージョン*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV}}},
 		{ { D3D12_FILTER_MIN_MAG_MIP_LINEAR ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP,D3D12_COMPARISON_FUNC_NEVER} });
 
 	auto deferredRenderringGraphicsPipelineState = pdx12::create_graphics_pipeline(device.get(), deferredRenderingRootSignature.get(),
@@ -766,10 +818,17 @@ int main()
 
 	auto lightCullingComputePipelineState = pdx12::create_compute_pipeline(device.get(), lightCullingRootSignater.get(), lightCullingComputeShader.get());
 
+
+	auto ssaoRootSignature = pdx12::create_root_signature(device.get(),
+		{ {{/*CameraData, DispatchData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV,2},{/*DepthBaffer, NormalBaffer*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,2},{/*AmbientOcclusion*/D3D12_DESCRIPTOR_RANGE_TYPE_UAV}} },
+		{ {D3D12_FILTER_MIN_MAG_MIP_LINEAR ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP,D3D12_COMPARISON_FUNC_NEVER} });
+
+	auto ssaoComputePipelineState = pdx12::create_compute_pipeline(device.get(), ssaoRootSignature.get(), ssaoComputeShader.get());
+
+
 	// 
 	// その他定数
 	// 
-
 
 	D3D12_VIEWPORT viewport{ 0.f,0.f, static_cast<float>(WINDOW_WIDTH),static_cast<float>(WINDOW_HEIGHT),0.f,1.f };
 	D3D12_RECT scissorRect{ 0,0,static_cast<LONG>(WINDOW_WIDTH),static_cast<LONG>(WINDOW_HEIGHT) };
@@ -854,36 +913,50 @@ int main()
 	*mappedPostEffectData = posEffectData;
 
 	// 高輝度をダウンサンプリングする際に使用する定数バッファに渡すデータ
-	DownSamplingData highLuminanceDownSamplingData{};
+	DispatchData highLuminanceDownSamplingDispatchData{};
 	{
 		auto tileWidth = 1 << (SHRINKED_HIGH_LUMINANCE_NUM - 1);
 		auto tiileHeight = 1 << (SHRINKED_HIGH_LUMINANCE_NUM - 1);
 		auto dispatchX = pdx12::alignment<UINT>(HIGH_LUMINANCE_WIDTH, tileWidth) / tileWidth;
 		auto dispatchY = pdx12::alignment<UINT>(HIGH_LUMINANCE_HEIGHT, tiileHeight) / tiileHeight;
 
-		highLuminanceDownSamplingData.dispatchX = dispatchX;
-		highLuminanceDownSamplingData.dispatchY = dispatchY;
+		highLuminanceDownSamplingDispatchData.dispatchX = dispatchX;
+		highLuminanceDownSamplingDispatchData.dispatchY = dispatchY;
 
-		DownSamplingData* mappedDownSamplingData = nullptr;
+		DispatchData* mappedDownSamplingData = nullptr;
 		highLuminanceDownSamplingDataResource.first->Map(0, nullptr, reinterpret_cast<void**>(&mappedDownSamplingData));
-		*mappedDownSamplingData = highLuminanceDownSamplingData;
+		*mappedDownSamplingData = highLuminanceDownSamplingDispatchData;
 	}
 
 	// メインカラーをダウンサンプリングする際に使用する定数バッファに渡すデータ
-	DownSamplingData mainColorDownSamplingData{};
+	DispatchData mainColorDownSamplingDispatchData{};
 	{
 		auto tileWidth = 1 << (SHRINKED_MAIN_COLOR_RESOURCE_NUM - 1);
 		auto tiileHeight = 1 << (SHRINKED_MAIN_COLOR_RESOURCE_NUM - 1);
 		auto dispatchX = pdx12::alignment<UINT>(MAIN_COLOR_RESOURCE_WIDTH, tileWidth) / tileWidth;
 		auto dispatchY = pdx12::alignment<UINT>(MAIN_COLOR_RESOURCE_HEIGHT, tiileHeight) / tiileHeight;
 
-		mainColorDownSamplingData.dispatchX = dispatchX;
-		mainColorDownSamplingData.dispatchY = dispatchY;
+		mainColorDownSamplingDispatchData.dispatchX = dispatchX;
+		mainColorDownSamplingDispatchData.dispatchY = dispatchY;
 
-		DownSamplingData* mappedDownSamplingData = nullptr;
+		DispatchData* mappedDownSamplingData = nullptr;
 		mainColorDownSamplingDataResource.first.get()->Map(0, nullptr, reinterpret_cast<void**>(&mappedDownSamplingData));
-		*mappedDownSamplingData = mainColorDownSamplingData;
+		*mappedDownSamplingData = mainColorDownSamplingDispatchData;
 	}
+
+	// ssao用のディスパッチのデータ
+	DispatchData ssaoDispatchData{};
+	{
+		// 定数としてちゃんと定義した方がイイかも
+		ssaoDispatchData.dispatchX = 64;
+		ssaoDispatchData.dispatchY = 64;
+
+		// この書き方, 冗長な希ガス
+		DispatchData* mappedDispatchData = nullptr;
+		ssaoDispatchDataResource.first.get()->Map(0, nullptr, reinterpret_cast<void**>(&mappedDispatchData));
+		*mappedDispatchData = ssaoDispatchData;
+	}
+
 
 
 	// 
@@ -908,6 +981,7 @@ int main()
 			}
 		}
 	}
+
 
 	// 
 	// メインループ
@@ -1163,6 +1237,7 @@ int main()
 
 		// 
 		// GBufferの描画処理とシャドウマップの描画処理が終わるのをそれぞれ待つ
+		// TODO: これGPUの性能的に意味なかった
 		// 
 
 		commandManager.wait(0);
@@ -1170,11 +1245,12 @@ int main()
 			commandManager.wait(1 + i);
 
 
+		commandManager.reset_list(0);
+
 		// 
 		// ライトカリング
 		// 
 
-		commandManager.reset_list(0);
 
 		pdx12::resource_barrior(commandManager.get_list(), pointLightIndexResource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 		commandManager.get_list()->SetComputeRootSignature(lightCullingRootSignater.get());
@@ -1184,9 +1260,32 @@ int main()
 		}
 		commandManager.get_list()->SetComputeRootDescriptorTable(0, lightCullingDescriptorHeapCBVSRVUAV.get_GPU_handle(0));
 		commandManager.get_list()->SetPipelineState(lightCullingComputePipelineState.get());
+		// DispatchDataの値を使用してないんか?
 		commandManager.get_list()->Dispatch(pdx12::alignment<UINT>(WINDOW_WIDTH, LIGHT_CULLING_TILE_WIDTH) / LIGHT_CULLING_TILE_WIDTH,
 			pdx12::alignment<UINT>(WINDOW_HEIGHT, LIGHT_CULLING_TILE_HEIGHT) / LIGHT_CULLING_TILE_HEIGHT, 1);
 		pdx12::resource_barrior(commandManager.get_list(), pointLightIndexResource, D3D12_RESOURCE_STATE_COMMON);
+
+
+		//
+		// SSAO
+		//
+
+		pdx12::resource_barrior(commandManager.get_list(), ambientOcclusionResource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		commandManager.get_list()->SetComputeRootSignature(ssaoRootSignature.get());
+		{
+			auto ptr = ssaoDescriptorHeapCBVSRVUAV.get();
+			commandManager.get_list()->SetDescriptorHeaps(1, &ptr);
+		}
+		commandManager.get_list()->SetComputeRootDescriptorTable(0, ssaoDescriptorHeapCBVSRVUAV.get_GPU_handle(0));
+		commandManager.get_list()->SetPipelineState(ssaoComputePipelineState.get());
+		commandManager.get_list()->Dispatch(ssaoDispatchData.dispatchX, ssaoDispatchData.dispatchY, 1);
+		pdx12::resource_barrior(commandManager.get_list(), ambientOcclusionResource, D3D12_RESOURCE_STATE_COMMON);
+
+
+
+
+
+
 
 
 		// 
@@ -1245,7 +1344,7 @@ int main()
 			commandManager.get_list()->SetComputeRootDescriptorTable(0, highLuminanceDownSamplingDescriptorHeapCBVSRVUAV.get_GPU_handle(0));
 			commandManager.get_list()->SetPipelineState(downSamplingPipelineState.get());
 
-			commandManager.get_list()->Dispatch(highLuminanceDownSamplingData.dispatchX, highLuminanceDownSamplingData.dispatchY, 1);
+			commandManager.get_list()->Dispatch(highLuminanceDownSamplingDispatchData.dispatchX, highLuminanceDownSamplingDispatchData.dispatchY, 1);
 
 			for (std::size_t i = 0; i < SHRINKED_HIGH_LUMINANCE_NUM; i++)
 				pdx12::resource_barrior(commandManager.get_list(), shrinkedHighLuminanceResource[i], D3D12_RESOURCE_STATE_COMMON);
@@ -1267,7 +1366,7 @@ int main()
 			commandManager.get_list()->SetComputeRootDescriptorTable(0, mainColorDownSamplingDescriptorHeapCBVSRVUAV.get_GPU_handle(0));
 			commandManager.get_list()->SetPipelineState(downSamplingPipelineState.get());
 
-			commandManager.get_list()->Dispatch(mainColorDownSamplingData.dispatchX, mainColorDownSamplingData.dispatchY, 1);
+			commandManager.get_list()->Dispatch(mainColorDownSamplingDispatchData.dispatchX, mainColorDownSamplingDispatchData.dispatchY, 1);
 
 			for (std::size_t i = 0; i < SHRINKED_MAIN_COLOR_RESOURCE_NUM; i++)
 				pdx12::resource_barrior(commandManager.get_list(), shrinkedMainColorResource[i], D3D12_RESOURCE_STATE_COMMON);

@@ -20,6 +20,8 @@ Texture2D<float> shadowMap[SHADOW_MAP_NUM] : register(t4);
 
 StructuredBuffer<uint> pointLightIndexBuffer : register(t7);
 
+Texture2D<float> ambientOcclusionTexture: register(t8);
+
 SamplerState smp: register(s0);
 
 struct VSOutput

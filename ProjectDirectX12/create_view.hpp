@@ -11,6 +11,7 @@ namespace pdx12
 	//
 
 
+	// sizeInBytesは256にアライメントしてないとエラー出るので注意
 	void create_CBV(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle, ID3D12Resource* resource, UINT sizeInBytes);
 
 

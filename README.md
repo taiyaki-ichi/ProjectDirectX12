@@ -6,4 +6,4 @@ DirectX12を利用した描画のアプリケーション
 ![](README/play001.gif)
 
 ## パイプライン概要
-![](README/pipeline.drawio.png)
+![](README/pipeline_2.drawio.png)
