@@ -103,11 +103,17 @@ constexpr std::array<std::size_t, SHADOW_MAP_NUM> SHADOW_MAP_SIZE = {
 	2048,
 };
 
-// シャドウマップの距離テーブル
-constexpr std::array<std::size_t, SHADOW_MAP_NUM> SHADOW_MAP_AREA_TABLE = {
-	10,
-	50,
-	static_cast<std::size_t>(CAMERA_FAR_Z)
+
+// これ, SHADOW_MAP_NUMの値が変るとパッキング崩れそう
+template<std::size_t SHADOW_MAP_NUM>
+struct ShadowMapData
+{
+	// シャドウマップの距離テーブル
+	std::array<float, SHADOW_MAP_NUM> areaTable{};
+	float poissonDiskSampleRadius;
+	// シェーダで影になっているかを判定する際に使用するバイアス
+	// 一応CPU側で設定できるようにしておく
+	std::array<float, SHADOW_MAP_NUM> biasTanle{};
 };
 
 // ライトのビュープロジェクション行列の数
@@ -433,7 +439,7 @@ int main()
 	// ssaoするときのディスパッチの情報用のリソース
 	auto ssaoDispatchDataResource = pdx12::create_commited_upload_buffer_resource(device.get(), pdx12::alignment<UINT64>(sizeof(DispatchData), 256));
 
-
+	auto shadowMapDataResource = pdx12::create_commited_upload_buffer_resource(device.get(), pdx12::alignment<UINT64>(sizeof(ShadowMapData<SHADOW_MAP_NUM>), 256));
 
 	// 
 	// デスクリプタヒープの作成
@@ -513,8 +519,8 @@ int main()
 	// ディファードレンダリングを行う際に利用するSRVなどを作成する用のデスクリプタヒープ
 	pdx12::descriptor_heap defferredRenderingDescriptorHeapCBVSRVUAV{};
 	{
-		// カメラのデータ、ライトのデータ、アルベドカラー、法線、ワールド座標、デプス、シャドウマップ、ポイントライトインデックス, アンビエントオクルージョン
-		defferredRenderingDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 6 + SHADOW_MAP_NUM + 2);
+		// カメラのデータ、ライトのデータ、アルベドカラー、法線、ワールド座標、デプス、シャドウマップ、ポイントライトインデックス, アンビエントオクルージョン, シャドウマップのデータ
+		defferredRenderingDescriptorHeapCBVSRVUAV.initialize(device.get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 6 + SHADOW_MAP_NUM + 3);
 
 		// CameraData
 		pdx12::create_CBV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(0),
@@ -554,6 +560,9 @@ int main()
 		pdx12::create_texture2D_SRV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(6 + SHADOW_MAP_NUM + 1),
 			ambientOcclusionResource.first.get(), AMBIENT_OCCLUSION_RESOURCE_FORMAT, 1, 0, 0, 0.f);
 
+		// シャドウマップのデータ
+		pdx12::create_CBV(device.get(), defferredRenderingDescriptorHeapCBVSRVUAV.get_CPU_handle(6 + SHADOW_MAP_NUM + 2),
+			shadowMapDataResource.first.get(), pdx12::alignment<UINT>(sizeof(ShadowMapData<SHADOW_MAP_NUM>), 256));
 	}
 
 	// ディファードレンダリングでのライティングのレンダーターゲットのビューのデスクリプタヒープ
@@ -782,7 +791,7 @@ int main()
 	auto deferredRenderingRootSignature = pdx12::create_root_signature(device.get(),
 		{ {{/*CameraData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*LightData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*アルベドカラー、法線、ワールド座標、デプスバッファの順*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,4},
 		{/*シャドウマップ*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,SHADOW_MAP_NUM},{/*ポイントライトのインデックスのリスト*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV},
-		{/*アンビエントオクルージョン*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV}}},
+		{/*アンビエントオクルージョン*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV},{/*ShadowMapData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV}}},
 		{ { D3D12_FILTER_MIN_MAG_MIP_LINEAR ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP,D3D12_COMPARISON_FUNC_NEVER} });
 
 	auto deferredRenderringGraphicsPipelineState = pdx12::create_graphics_pipeline(device.get(), deferredRenderingRootSignature.get(),
@@ -957,6 +966,17 @@ int main()
 		*mappedDispatchData = ssaoDispatchData;
 	}
 
+	ShadowMapData<SHADOW_MAP_NUM> shadowMapData{
+		{10,50,static_cast<std::size_t>(CAMERA_FAR_Z)},
+		0.001f,
+		{0.001f,0.003f,0.05f},
+	};
+
+	{
+		ShadowMapData<SHADOW_MAP_NUM>* mappedShadowMapData = nullptr;
+		shadowMapDataResource.first.get()->Map(0, nullptr, reinterpret_cast<void**>(&mappedShadowMapData));
+		*mappedShadowMapData = shadowMapData;
+	}
 
 
 	// 
@@ -1066,7 +1086,7 @@ int main()
 
 			std::array<XMFLOAT3, 8> vertex{};
 			XMFLOAT3 cameraForward = { target.x - eye.x,target.y - eye.y, target.z - eye.z };
-			pdx12::get_frustum_vertex(eye, asspect, CAMERA_NEAR_Z, static_cast<float>(SHADOW_MAP_AREA_TABLE[i]), VIEW_ANGLE, cameraForward, right, vertex);
+			pdx12::get_frustum_vertex(eye, asspect, CAMERA_NEAR_Z, static_cast<float>(shadowMapData.areaTable[i]), VIEW_ANGLE, cameraForward, right, vertex);
 			for (std::size_t j = 0; j < vertex.size(); j++)
 				pdx12::apply(vertex[j], lightViewProj);
 			XMMATRIX clop{};

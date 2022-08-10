@@ -11,6 +11,11 @@ cbuffer LightDataConstantBuffer : register(b1)
 	LightData lightData;
 }
 
+cbuffer ShadowMapDataConstantBuffer : register(b2)
+{
+	ShadowMapData shadowMapData;
+}
+
 Texture2D<float4> albedoColorTexture: register(t0);
 Texture2D<float4> normalTexture: register(t1);
 Texture2D<float4> worldPositionTexture: register(t2);

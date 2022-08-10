@@ -1,5 +1,21 @@
 #include"Header.hlsli"
 
+static const int POISSON_DISK_SAMPLE_CNT = 12;
+static const float2 POISSON_DISK[12] = {
+	float2(0.0191375, 0.635275),
+	float2(0.396322, 0.873851),
+	float2(-0.588224, 0.588251),
+	float2(-0.3404, 0.0154557),
+	float2(0.510869, 0.0278614),
+	float2(-0.15801, -0.659996),
+	float2(0.120268, -0.200636),
+	float2(-0.925312, -0.0306309),
+	float2(-0.561635, -0.32798),
+	float2(0.424297, -0.852628),
+	float2(0.923275, -0.191526),
+	float2(0.703181, 0.556563)
+};
+
 uint Alignment(uint size, uint alignment) {
 	return size + alignment - size % alignment;
 }
@@ -112,12 +128,27 @@ PSOutput main(VSOutput input)
 			if (0.f <= shadowMapUV.x && shadowMapUV.x <= 1.f &&
 				0.f <= shadowMapUV.y && shadowMapUV.y <= 1.f)
 			{
-				float shadowMapValue = shadowMap[i].Sample(smp, shadowMapUV);
+				//
+				// 使用するシャドウマップが決まったらポアソンディスクサンプリングを行う
+				//
 
-				if (z >= shadowMapValue + 0.001f)
+				float visibility = 1.f;
+				// 一番暗い値
+				const float shadowRate = 0.5;
+				float delta = (1.f - shadowRate) / (float)POISSON_DISK_SAMPLE_CNT;
+
+				for (int j = 0; j < POISSON_DISK_SAMPLE_CNT; j++)
 				{
-					output.color *= 0.8f;	
+					// ポアソンディスクサンプルの半径をCPU側から変更できるようにする
+					float shadowMapValue = shadowMap[i].Sample(smp, shadowMapUV + POISSON_DISK[j] * shadowMapData.poissonDiskSampleRadius);
+
+					if (z >= shadowMapValue + shadowMapData.biasTable[i])
+					{
+						visibility -= delta;
+					}
 				}
+
+				output.color.rgb *= visibility;
 
 				/*
 				if (i == 0)
