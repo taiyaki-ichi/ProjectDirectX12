@@ -34,3 +34,9 @@ struct LightData
 
 	float specPow;
 };
+
+struct ShadowMapData {
+	vector<float, SHADOW_MAP_NUM> areaTable;
+	float poissonDiskSampleRadius;
+	vector<float, SHADOW_MAP_NUM> biasTable;
+};

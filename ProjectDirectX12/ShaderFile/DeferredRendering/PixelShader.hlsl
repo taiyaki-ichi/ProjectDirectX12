@@ -140,16 +140,9 @@ PSOutput main(VSOutput input)
 				for (int j = 0; j < POISSON_DISK_SAMPLE_CNT; j++)
 				{
 					// ポアソンディスクサンプルの半径をCPU側から変更できるようにする
-					float shadowMapValue = shadowMap[i].Sample(smp, shadowMapUV + POISSON_DISK[j] / 900.f);
+					float shadowMapValue = shadowMap[i].Sample(smp, shadowMapUV + POISSON_DISK[j] * shadowMapData.poissonDiskSampleRadius);
 
-					// バイアスCPU側から変更できるようにする
-					float bias[3] = {
-						0.001f,
-						0.003f,
-						0.05f,
-					};
-
-					if (z >= shadowMapValue + bias[i])
+					if (z >= shadowMapValue + shadowMapData.biasTable[i])
 					{
 						visibility -= delta;
 					}
