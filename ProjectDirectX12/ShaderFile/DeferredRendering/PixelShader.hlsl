@@ -138,10 +138,8 @@ PSOutput main(VSOutput input)
 	output.highLuminance = y > 0.99f ? output.color : 0.0f;
 	output.highLuminance.a = 1.0;
 
-	//
-	float hoge = ambientOcclusionTexture.Sample(smp, input.uv);
-	//output.color = float4(hoge, hoge, hoge, 1);
-	output.color.rgb*= hoge;
+	// アンビエントオクルージョン
+	output.color.rgb *= ambientOcclusionTexture.Sample(smp, input.uv);
 
 	return output;
 }

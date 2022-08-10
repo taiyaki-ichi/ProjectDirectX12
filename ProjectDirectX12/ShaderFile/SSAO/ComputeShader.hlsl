@@ -63,7 +63,6 @@ void main(uint groupIndex : SV_GroupIndex, uint3 dispatchThreadID : SV_DispatchT
 	float4 posInView = mul(cameraData.projInv, float4(uv * float2(2.f, -2.f) + float2(-1.f, 1.f), depth, 1.f));
 	posInView.xyz = posInView.xyz / posInView.w;
 
-	float occlusion = 0.f;
 	float3 norm = normalize((normalTexture.SampleLevel(smp, uv, 0.f).xyz * 2.f) - 1.f);
 	// 平行移動はさせない
 	norm = mul(cameraData.view, float4(norm, 0.f)).xyz;
@@ -73,6 +72,8 @@ void main(uint groupIndex : SV_GroupIndex, uint3 dispatchThreadID : SV_DispatchT
 	const float radius = 0.5f;
 	// 暗くなりすぎないようにバイアスをかける
 	const float bias = 0.0025f;
+
+	float occlusion = 0.f;
 
 	for (int i = 0; i < tryCnt; i++)
 	{
@@ -95,6 +96,7 @@ void main(uint groupIndex : SV_GroupIndex, uint3 dispatchThreadID : SV_DispatchT
 
 		float sampleDepth = depthTexture.SampleLevel(smp, samplePosUV, 0.f);
 
+		// 基準の点とサンプルする点の距離が遠すぎす場合は遮られていると判定させないようにする用
 		float rangeCheck = smoothstep(0.0, 1.0, radius / abs(posInView.z - sampleDepth));
 
 		// sampleDepthのほうがsamplePos.z+bias以上の時
