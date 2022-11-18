@@ -75,7 +75,9 @@ StyleCopReport.xml
 *_h.h
 *.ilk
 *.meta
+# 3DModelは無視しない
 *.obj
+!ProjectDirectX12/3DModel/*
 *.iobj
 *.pch
 *.pdb
