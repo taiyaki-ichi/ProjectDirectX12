@@ -1,5 +1,5 @@
 #include"mouse_device.hpp"
-#include"../utility.hpp"
+#include"utility.hpp"
 
 #pragma comment(lib, "dinput8.lib")
 #pragma comment(lib, "dxguid.lib")
@@ -13,19 +13,19 @@ namespace pdx12
 	{
 		if (FAILED(directInput->CreateDevice(GUID_SysMouse, &m_device, NULL)))
 		{
-			THROW_PDX12_EXCEPTION("failed mouse_device::initialize CreateDevice");
+			dx12w::THROW_PDX12_EXCEPTION("failed mouse_device::initialize CreateDevice");
 		}
 
 		//  入力フォーマットの指定
 		if (FAILED(m_device->SetDataFormat(&c_dfDIMouse)))
 		{
-			THROW_PDX12_EXCEPTION("failed mouse_device::initialize SetDataFormat");
+			dx12w::THROW_PDX12_EXCEPTION("failed mouse_device::initialize SetDataFormat");
 		}
 
 		//  協調モードの設定
 		if (FAILED(m_device->SetCooperativeLevel(hwnd,DISCL_NONEXCLUSIVE | DISCL_FOREGROUND)))
 		{
-			THROW_PDX12_EXCEPTION("failed mouse_device::initialize SetCooperativeLevel");
+			dx12w::THROW_PDX12_EXCEPTION("failed mouse_device::initialize SetCooperativeLevel");
 		}
 
 		int count = 0;

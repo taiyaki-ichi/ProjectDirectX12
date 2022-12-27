@@ -1,5 +1,5 @@
 #include"keyboard_device.hpp"
-#include"../utility.hpp"
+#include"utility.hpp"
 
 #pragma comment(lib, "dinput8.lib")
 #pragma comment(lib, "dxguid.lib")
@@ -10,25 +10,25 @@ namespace pdx12
 	{
 		if (FAILED(directInput->CreateDevice(GUID_SysKeyboard, &m_device, NULL)))
 		{
-			THROW_PDX12_EXCEPTION("failed keyboard_device::initialize CreateDevice");
+			dx12w::THROW_PDX12_EXCEPTION("failed keyboard_device::initialize CreateDevice");
 		}
 
 		//  デバイスのフォーマットの設定
 		if (FAILED(m_device->SetDataFormat(&c_dfDIKeyboard)))
 		{
-			THROW_PDX12_EXCEPTION("failed keyboard_device::initialize SetDataFormat");
+			dx12w::THROW_PDX12_EXCEPTION("failed keyboard_device::initialize SetDataFormat");
 		}
 
 		//  協調モードの設定
 		if (FAILED(m_device->SetCooperativeLevel(hwnd, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE)))
 		{
-			THROW_PDX12_EXCEPTION("failed keyboard_device::initialize SetCooperativeLevel");
+			dx12w::THROW_PDX12_EXCEPTION("failed keyboard_device::initialize SetCooperativeLevel");
 		}
 
 		//  デバイスの取得開始
 		if (FAILED(m_device->Acquire()))
 		{
-			THROW_PDX12_EXCEPTION("failed keyboard_device::initialize Acquire");
+			dx12w::THROW_PDX12_EXCEPTION("failed keyboard_device::initialize Acquire");
 		}
 
 		// 初期化
