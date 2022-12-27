@@ -1,0 +1,3 @@
+[submodule "external/OBJ-Loader"]
+	path = external/OBJ-Loader
+	url = https://github.com/Bly7/OBJ-Loader.git
