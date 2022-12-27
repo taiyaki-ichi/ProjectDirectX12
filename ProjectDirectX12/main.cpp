@@ -13,7 +13,7 @@
 #include"Input/mouse_device.hpp"
 #include"Input/gamepad_device.hpp"
 #include"TPS.hpp"
-#include"OBJ-Loader/Source/OBJ_Loader.h"
+#include"../external/OBJ-Loader/Source/OBJ_Loader.h"
 #include<iostream>
 #include<random>
 #include<chrono>
