@@ -1,8 +1,8 @@
 #pragma once
 #include<dinput.h>
-#include"../utility.hpp"
+#include"utility.hpp"
 
 namespace pdx12
 {
-	release_unique_ptr<IDirectInput8W> create_direct_input();
+	dx12w::release_unique_ptr<IDirectInput8W> create_direct_input();
 }

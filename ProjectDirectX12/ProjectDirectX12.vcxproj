@@ -152,40 +152,21 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="create_view.cpp" />
-    <ClCompile Include="descriptor_heap.cpp" />
-    <ClCompile Include="device.cpp" />
     <ClCompile Include="Input\create_direct_input.cpp" />
     <ClCompile Include="Input\gamepad_device.cpp" />
     <ClCompile Include="Input\keyboard_device.cpp" />
     <ClCompile Include="Input\mouse_device.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="pipeline_state.cpp" />
-    <ClCompile Include="resource.cpp" />
-    <ClCompile Include="root_signature.cpp" />
-    <ClCompile Include="shader.cpp" />
-    <ClCompile Include="swap_chain.cpp" />
     <ClCompile Include="utility.cpp" />
-    <ClCompile Include="window.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="command_manager.hpp" />
-    <ClInclude Include="create_view.hpp" />
-    <ClInclude Include="descriptor_heap.hpp" />
-    <ClInclude Include="device.hpp" />
     <ClInclude Include="Input\button_state.hpp" />
     <ClInclude Include="Input\create_direct_input.hpp" />
     <ClInclude Include="Input\gamepad_device.hpp" />
     <ClInclude Include="Input\keyboard_device.hpp" />
     <ClInclude Include="Input\mouse_device.hpp" />
-    <ClInclude Include="pipeline_state.hpp" />
-    <ClInclude Include="resource.hpp" />
-    <ClInclude Include="root_signature.hpp" />
-    <ClInclude Include="shader.hpp" />
-    <ClInclude Include="swap_chain.hpp" />
     <ClInclude Include="TPS.hpp" />
     <ClInclude Include="utility.hpp" />
-    <ClInclude Include="window.hpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ShaderFile\DeferredRendering\PixelShader.hlsl">

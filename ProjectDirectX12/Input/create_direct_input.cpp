@@ -5,7 +5,7 @@
 
 namespace pdx12
 {
-	release_unique_ptr<IDirectInput8W> create_direct_input()
+	dx12w::release_unique_ptr<IDirectInput8W> create_direct_input()
 	{
 		IDirectInput8W* tmp = nullptr;
 
@@ -17,9 +17,9 @@ namespace pdx12
 			NULL);
 		if (FAILED(hr))
 		{
-			THROW_PDX12_EXCEPTION("failed create_direct_input");
+			dx12w::THROW_PDX12_EXCEPTION("failed create_direct_input");
 		}
 
-		return release_unique_ptr<IDirectInput8W>{ tmp };
+		return dx12w::release_unique_ptr<IDirectInput8W>{ tmp };
 	}
 }
