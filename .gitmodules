@@ -1,3 +1,6 @@
 [submodule "external/OBJ-Loader"]
 	path = external/OBJ-Loader
 	url = https://github.com/Bly7/OBJ-Loader.git
+[submodule "external/directx12-wrapper"]
+	path = external/directx12-wrapper
+	url = https://github.com/taiyaki-ichi/directx12-wrapper.git
