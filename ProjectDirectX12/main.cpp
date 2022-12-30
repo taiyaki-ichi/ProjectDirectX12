@@ -1,10 +1,10 @@
-#include"dx12w.hpp"
+#include"../external/directx12-wrapper/dx12w/dx12w.hpp"
+#include"../external/OBJ-Loader/Source/OBJ_Loader.h"
 #include"Input/create_direct_input.hpp"
 #include"Input/keyboard_device.hpp"
 #include"Input/mouse_device.hpp"
 #include"Input/gamepad_device.hpp"
 #include"TPS.hpp"
-#include"../external/OBJ-Loader/Source/OBJ_Loader.h"
 #include"utility.hpp"
 #include<iostream>
 #include<random>
