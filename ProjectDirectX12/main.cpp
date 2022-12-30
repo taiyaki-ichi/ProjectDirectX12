@@ -717,31 +717,31 @@ int main()
 	// 
 
 	// モデルをGBufferに書き込むシェーダ
-	auto modelGBufferVertexShader = dx12w::create_shader(L"ShaderFile/SimpleModel/VertexShader.hlsl", "main", "vs_5_0");
-	auto modelGBufferPixelShader = dx12w::create_shader(L"ShaderFile/SimpleModel/PixelShader.hlsl", "main", "ps_5_0");
-	auto modelShadowVertexShader = dx12w::create_shader(L"ShaderFile/SimpleModel/ShadowVertexShader.hlsl", "main", "vs_5_0");
+	auto modelGBufferVertexShader = dx12w::compile_shader(L"ShaderFile/SimpleModel/VertexShader.hlsl", "main", "vs_5_0");
+	auto modelGBufferPixelShader = dx12w::compile_shader(L"ShaderFile/SimpleModel/PixelShader.hlsl", "main", "ps_5_0");
+	auto modelShadowVertexShader = dx12w::compile_shader(L"ShaderFile/SimpleModel/ShadowVertexShader.hlsl", "main", "vs_5_0");
 
 	// 地面のモデルをGbufferに書き込むシェーダ
-	auto groundGBufferVertexShader = dx12w::create_shader(L"ShaderFile/SimpleGround/VertexShader.hlsl", "main", "vs_5_0");
-	auto groundGBufferPixelShader = dx12w::create_shader(L"ShaderFile/SimpleGround/PixelShader.hlsl", "main", "ps_5_0");
-	auto groudnShadowVertexShader = dx12w::create_shader(L"ShaderFile/SimpleGround/ShadowVertexShader.hlsl", "main", "vs_5_0");
+	auto groundGBufferVertexShader = dx12w::compile_shader(L"ShaderFile/SimpleGround/VertexShader.hlsl", "main", "vs_5_0");
+	auto groundGBufferPixelShader = dx12w::compile_shader(L"ShaderFile/SimpleGround/PixelShader.hlsl", "main", "ps_5_0");
+	auto groudnShadowVertexShader = dx12w::compile_shader(L"ShaderFile/SimpleGround/ShadowVertexShader.hlsl", "main", "vs_5_0");
 
 	// GBUufferを利用したディファードレンダリングでのライティング用のシェーダ
-	auto deferredRenderingVertexShader = dx12w::create_shader(L"ShaderFile/DeferredRendering/VertexShader.hlsl", "main", "vs_5_0");
-	auto deferredRenderingPixelShader = dx12w::create_shader(L"ShaderFile/DeferredRendering/PixelShader.hlsl", "main", "ps_5_0");
+	auto deferredRenderingVertexShader = dx12w::compile_shader(L"ShaderFile/DeferredRendering/VertexShader.hlsl", "main", "vs_5_0");
+	auto deferredRenderingPixelShader = dx12w::compile_shader(L"ShaderFile/DeferredRendering/PixelShader.hlsl", "main", "ps_5_0");
 
 	// ダウンサンプリングを行うコンピュートシェーダ
-	auto downSamplingComputeShader = dx12w::create_shader(L"ShaderFile/DownSampling/ComputeShader.hlsl", "main", "cs_5_0");
+	auto downSamplingComputeShader = dx12w::compile_shader(L"ShaderFile/DownSampling/ComputeShader.hlsl", "main", "cs_5_0");
 
 	// ポストエフェクトをかけるシェーダ
-	auto postEffectVertexShader = dx12w::create_shader(L"ShaderFile/PostEffect/VertexShader.hlsl", "main", "vs_5_0");
-	auto postEffectPixelShader = dx12w::create_shader(L"ShaderFile/PostEffect/PixelShader.hlsl", "main", "ps_5_0");
+	auto postEffectVertexShader = dx12w::compile_shader(L"ShaderFile/PostEffect/VertexShader.hlsl", "main", "vs_5_0");
+	auto postEffectPixelShader = dx12w::compile_shader(L"ShaderFile/PostEffect/PixelShader.hlsl", "main", "ps_5_0");
 
 	// ライトカリング用のシェーダ
-	auto lightCullingComputeShader = dx12w::create_shader(L"ShaderFile/LightCulling/ComputeShader.hlsl", "main", "cs_5_0");
+	auto lightCullingComputeShader = dx12w::compile_shader(L"ShaderFile/LightCulling/ComputeShader.hlsl", "main", "cs_5_0");
 
 	// ssao用のシェーダ
-	auto ssaoComputeShader = dx12w::create_shader(L"ShaderFile/SSAO/ComputeShader.hlsl", "main", "cs_5_0");
+	auto ssaoComputeShader = dx12w::compile_shader(L"ShaderFile/SSAO/ComputeShader.hlsl", "main", "cs_5_0");
 
 
 	// 
