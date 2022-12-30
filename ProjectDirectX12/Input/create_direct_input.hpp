@@ -1,6 +1,6 @@
 #pragma once
 #include<dinput.h>
-#include"utility.hpp"
+#include"dx12w_utility.hpp"
 
 namespace pdx12
 {

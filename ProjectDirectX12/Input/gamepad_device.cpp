@@ -1,5 +1,5 @@
 #include"gamepad_device.hpp"
-#include"utility.hpp"
+#include"dx12w_utility.hpp"
 
 #pragma comment(lib,"xinput.lib ")
 
