@@ -224,7 +224,6 @@ int main()
 
 	auto swapChain = dx12w::create_swap_chain(commandManager.get_queue(), hwnd, FRAME_BUFFER_FORMAT, FRAME_BUFFER_NUM);
 
-
 	// 
 	// クリアの値などの定義
 	// 
@@ -747,8 +746,8 @@ int main()
 	// GBUufferを利用したディファードレンダリングでのライティング用のシェーダ
 	// auto deferredRenderingVertexShader = dx12w::compile_shader(L"ShaderFile/DeferredRendering/VertexShader.hlsl", "main", "vs_5_0");
 	std::ifstream deferredRenderingVertexShaderCSO{ L"ShaderFile/DeferredRendering/VertexShader.cso" ,std::ios::binary | std::ifstream::ate };
-	deferredRenderingVertexShaderCSO.close();
 	auto deferredRenderingVertexShader = dx12w::load_blob(deferredRenderingVertexShaderCSO);
+	deferredRenderingVertexShaderCSO.close();
 	// auto deferredRenderingPixelShader = dx12w::compile_shader(L"ShaderFile/DeferredRendering/PixelShader.hlsl", "main", "ps_5_0");
 	std::ifstream deferredRenderingPixelShaderCSO{ L"ShaderFile/DeferredRendering/PixelShader.cso" ,std::ios::binary | std::ifstream::ate };
 	auto deferredRenderingPixelShader = dx12w::load_blob(deferredRenderingPixelShaderCSO);
@@ -794,12 +793,13 @@ int main()
 	// モデルを描写する用のグラフィックパイプライン
 	auto modelGBufferGraphicsPipelineState = dx12w::create_graphics_pipeline(device.get(), modelRootSignature.get(),
 		{ { "POSITION",DXGI_FORMAT_R32G32B32_FLOAT },{ "NORMAL",DXGI_FORMAT_R32G32B32_FLOAT } },
-		{ G_BUFFER_ALBEDO_COLOR_FORMAT,G_BUFFER_NORMAL_FORMAT,G_BUFFER_WORLD_POSITION_FORMAT }, { modelGBufferVertexShader.get(),modelGBufferPixelShader.get() }
+		{ G_BUFFER_ALBEDO_COLOR_FORMAT,G_BUFFER_NORMAL_FORMAT,G_BUFFER_WORLD_POSITION_FORMAT },
+		{ {modelGBufferVertexShader.data(),modelGBufferVertexShader.size()} ,{modelGBufferPixelShader.data(),modelGBufferPixelShader.size()} }
 	, true, false, D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 
 	// モデルの影を描写するグラフィックスパイプライン
 	auto modelShdowGraphicsPipelineState = dx12w::create_graphics_pipeline(device.get(), modelRootSignature.get(),
-		{ { "POSITION",DXGI_FORMAT_R32G32B32_FLOAT },{ "NORMAL",DXGI_FORMAT_R32G32B32_FLOAT } }, {}, { modelShadowVertexShader.get() }
+		{ { "POSITION",DXGI_FORMAT_R32G32B32_FLOAT },{ "NORMAL",DXGI_FORMAT_R32G32B32_FLOAT } }, {}, { modelShadowVertexShader.data(),modelShadowVertexShader.size() }
 	, true, false, D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 
 
@@ -810,12 +810,13 @@ int main()
 	// 地面を描写する用のグラフィックパイプライン
 	auto groundGBufferGraphicsPipelineState = dx12w::create_graphics_pipeline(device.get(), groundRootSignature.get(),
 		{ { "POSITION",DXGI_FORMAT_R32G32B32_FLOAT },{ "TEXCOOD",DXGI_FORMAT_R32G32_FLOAT } },
-		{ G_BUFFER_ALBEDO_COLOR_FORMAT,G_BUFFER_NORMAL_FORMAT,G_BUFFER_WORLD_POSITION_FORMAT }, { groundGBufferVertexShader.get(),groundGBufferPixelShader.get() }
+		{ G_BUFFER_ALBEDO_COLOR_FORMAT,G_BUFFER_NORMAL_FORMAT,G_BUFFER_WORLD_POSITION_FORMAT },
+		{ {groundGBufferVertexShader.data(),groundGBufferVertexShader.size()},{groundGBufferPixelShader.data(),groundGBufferPixelShader.size()} }
 	, true, false, D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 
 	// 地面の影を描画する用のグラフィクスパイプライン
 	auto groundShadowGraphicsPipelineState = dx12w::create_graphics_pipeline(device.get(), groundRootSignature.get(),
-		{ { "POSITION",DXGI_FORMAT_R32G32B32_FLOAT },{ "TEXCOOD",DXGI_FORMAT_R32G32_FLOAT } }, {}, { groudnShadowVertexShader.get() }
+		{ { "POSITION",DXGI_FORMAT_R32G32B32_FLOAT },{ "TEXCOOD",DXGI_FORMAT_R32G32_FLOAT } }, {}, { {groudnShadowVertexShader.data() ,groudnShadowVertexShader.size()} }
 	, true, false, D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 
 
@@ -827,7 +828,8 @@ int main()
 
 	auto deferredRenderringGraphicsPipelineState = dx12w::create_graphics_pipeline(device.get(), deferredRenderingRootSignature.get(),
 		{ { "POSITION",DXGI_FORMAT_R32G32B32_FLOAT },{ "TEXCOOD",DXGI_FORMAT_R32G32_FLOAT } },
-		{ MAIN_COLOR_RESOURCE_FORMAT,HIGH_LUMINANCE_FORMAT }, { deferredRenderingVertexShader.get(),deferredRenderingPixelShader.get() }
+		{ MAIN_COLOR_RESOURCE_FORMAT,HIGH_LUMINANCE_FORMAT },
+		{ {deferredRenderingVertexShader.data(),deferredRenderingVertexShader.size()},{deferredRenderingPixelShader.data(),deferredRenderingPixelShader.size()} }
 	, false, false, D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 
 
@@ -837,7 +839,7 @@ int main()
 		{ {D3D12_FILTER_MIN_MAG_MIP_LINEAR ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP,D3D12_COMPARISON_FUNC_NEVER} });
 
 	// 高輝度とメインカラーをダウンサンプリングする際に使用するパイプライン
-	auto downSamplingPipelineState = dx12w::create_compute_pipeline(device.get(), downSamplingRootSignature.get(), downSamplingComputeShader.get());
+	auto downSamplingPipelineState = dx12w::create_compute_pipeline(device.get(), downSamplingRootSignature.get(), { downSamplingComputeShader.data(),downSamplingComputeShader.size() });
 
 
 	auto postEffectRootSignature = dx12w::create_root_signature(device.get(),
@@ -848,7 +850,7 @@ int main()
 
 	auto postEffectGraphicsPipelineState = dx12w::create_graphics_pipeline(device.get(), postEffectRootSignature.get(),
 		{ { "POSITION",DXGI_FORMAT_R32G32B32_FLOAT },{ "TEXCOOD",DXGI_FORMAT_R32G32_FLOAT } },
-		{ FRAME_BUFFER_FORMAT }, { postEffectVertexShader.get(),postEffectPixelShader.get() }
+		{ FRAME_BUFFER_FORMAT }, { {postEffectVertexShader.data(),postEffectVertexShader.size()},{postEffectPixelShader.data(),postEffectPixelShader.size()} }
 	, false, false, D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 
 
@@ -856,14 +858,14 @@ int main()
 		{ { {/*CameraData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*LightData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*DepthBuffer*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV},{/*PointLightIndex*/D3D12_DESCRIPTOR_RANGE_TYPE_UAV} } },
 		{ {D3D12_FILTER_MIN_MAG_MIP_LINEAR ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP,D3D12_COMPARISON_FUNC_NEVER} });
 
-	auto lightCullingComputePipelineState = dx12w::create_compute_pipeline(device.get(), lightCullingRootSignater.get(), lightCullingComputeShader.get());
+	auto lightCullingComputePipelineState = dx12w::create_compute_pipeline(device.get(), lightCullingRootSignater.get(), { lightCullingComputeShader.data(),lightCullingComputeShader.size() });
 
 
 	auto ssaoRootSignature = dx12w::create_root_signature(device.get(),
 		{ {{/*CameraData, DispatchData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV,2},{/*DepthBaffer, NormalBaffer*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,2},{/*AmbientOcclusion*/D3D12_DESCRIPTOR_RANGE_TYPE_UAV}} },
 		{ {D3D12_FILTER_MIN_MAG_MIP_LINEAR ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP,D3D12_COMPARISON_FUNC_NEVER} });
 
-	auto ssaoComputePipelineState = dx12w::create_compute_pipeline(device.get(), ssaoRootSignature.get(), ssaoComputeShader.get());
+	auto ssaoComputePipelineState = dx12w::create_compute_pipeline(device.get(), ssaoRootSignature.get(), { ssaoComputeShader.data(),ssaoComputeShader.size() });
 
 
 	// 
@@ -1016,6 +1018,7 @@ int main()
 
 	auto directInput = pdx12::create_direct_input();
 
+	/*
 	pdx12::gamepad_device gamepad{};
 	{
 		// ゲームパッドの接続を待つ
@@ -1032,6 +1035,7 @@ int main()
 			}
 		}
 	}
+	*/
 
 
 	// 
@@ -1064,6 +1068,7 @@ int main()
 		*mappedModelDataPtr = modelData;
 
 		// ゲームパッドの情報から視点を移動させる処理
+		/*
 		{
 			auto padData = gamepad.get_state();
 			pdx12::UpdateTPS(tps, padData.lY / 1000.f, padData.lX / 1000.f, -padData.lZ / 1000.f);
@@ -1074,6 +1079,7 @@ int main()
 			eye = pdx12::GetEyePosition(tps);
 			target = tps.target;
 		}
+		*/
 
 		// 以下, 更新された視点の情報からシェーダで使用する情報を更新する
 
