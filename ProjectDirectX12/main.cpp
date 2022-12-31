@@ -717,31 +717,70 @@ int main()
 	// 
 
 	// モデルをGBufferに書き込むシェーダ
-	auto modelGBufferVertexShader = dx12w::compile_shader(L"ShaderFile/SimpleModel/VertexShader.hlsl", "main", "vs_5_0");
-	auto modelGBufferPixelShader = dx12w::compile_shader(L"ShaderFile/SimpleModel/PixelShader.hlsl", "main", "ps_5_0");
-	auto modelShadowVertexShader = dx12w::compile_shader(L"ShaderFile/SimpleModel/ShadowVertexShader.hlsl", "main", "vs_5_0");
+	// auto modelGBufferVertexShader = dx12w::compile_shader(L"ShaderFile/SimpleModel/VertexShader.hlsl", "main", "vs_5_0");
+	std::ifstream modelGBufferVertexShaderCSO{ L"ShaderFile/SimpleModel/VertexShader.cso",std::ios::binary | std::ifstream::ate };
+	auto modelGBufferVertexShader = dx12w::load_blob(modelGBufferVertexShaderCSO);
+	modelGBufferVertexShaderCSO.close();
+	// auto modelGBufferPixelShader = dx12w::compile_shader(L"ShaderFile/SimpleModel/PixelShader.hlsl", "main", "ps_5_0");
+	std::ifstream modelGBufferPixelShaderCSO{ L"ShaderFile/SimpleModel/PixelShader.cso" ,std::ios::binary | std::ifstream::ate };
+	auto modelGBufferPixelShader = dx12w::load_blob(modelGBufferPixelShaderCSO);
+	modelGBufferPixelShaderCSO.close();
+	// auto modelShadowVertexShader = dx12w::compile_shader(L"ShaderFile/SimpleModel/ShadowVertexShader.hlsl", "main", "vs_5_0");
+	std::ifstream modelShadowVertexShaderCSO{ L"ShaderFile/SimpleModel/ShadowVertexShader.cso",std::ios::binary | std::ifstream::ate };
+	auto modelShadowVertexShader = dx12w::load_blob(modelShadowVertexShaderCSO);
+	modelShadowVertexShaderCSO.close();
 
 	// 地面のモデルをGbufferに書き込むシェーダ
-	auto groundGBufferVertexShader = dx12w::compile_shader(L"ShaderFile/SimpleGround/VertexShader.hlsl", "main", "vs_5_0");
-	auto groundGBufferPixelShader = dx12w::compile_shader(L"ShaderFile/SimpleGround/PixelShader.hlsl", "main", "ps_5_0");
-	auto groudnShadowVertexShader = dx12w::compile_shader(L"ShaderFile/SimpleGround/ShadowVertexShader.hlsl", "main", "vs_5_0");
+	// auto groundGBufferVertexShader = dx12w::compile_shader(L"ShaderFile/SimpleGround/VertexShader.hlsl", "main", "vs_5_0");
+	std::ifstream groundGBufferVertexShaderCSO{ L"ShaderFile/SimpleGround/VertexShader.cso",std::ios::binary | std::ifstream::ate };
+	auto groundGBufferVertexShader = dx12w::load_blob(groundGBufferVertexShaderCSO);
+	groundGBufferVertexShaderCSO.close();
+	// auto groundGBufferPixelShader = dx12w::compile_shader(L"ShaderFile/SimpleGround/PixelShader.hlsl", "main", "ps_5_0");
+	std::ifstream groundGBufferPixelShaderCSO{ L"ShaderFile/SimpleGround/PixelShader.cso" ,std::ios::binary | std::ifstream::ate };
+	auto groundGBufferPixelShader = dx12w::load_blob(groundGBufferPixelShaderCSO);
+	groundGBufferPixelShaderCSO.close();
+	// auto groudnShadowVertexShader = dx12w::compile_shader(L"ShaderFile/SimpleGround/ShadowVertexShader.hlsl", "main", "vs_5_0");
+	std::ifstream groudnShadowVertexShaderCSO{ L"ShaderFile/SimpleGround/ShadowVertexShader.cso" ,std::ios::binary | std::ifstream::ate };
+	auto groudnShadowVertexShader = dx12w::load_blob(groudnShadowVertexShaderCSO);
+	groudnShadowVertexShaderCSO.close();
 
 	// GBUufferを利用したディファードレンダリングでのライティング用のシェーダ
-	auto deferredRenderingVertexShader = dx12w::compile_shader(L"ShaderFile/DeferredRendering/VertexShader.hlsl", "main", "vs_5_0");
-	auto deferredRenderingPixelShader = dx12w::compile_shader(L"ShaderFile/DeferredRendering/PixelShader.hlsl", "main", "ps_5_0");
+	// auto deferredRenderingVertexShader = dx12w::compile_shader(L"ShaderFile/DeferredRendering/VertexShader.hlsl", "main", "vs_5_0");
+	std::ifstream deferredRenderingVertexShaderCSO{ L"ShaderFile/DeferredRendering/VertexShader.cso" ,std::ios::binary | std::ifstream::ate };
+	deferredRenderingVertexShaderCSO.close();
+	auto deferredRenderingVertexShader = dx12w::load_blob(deferredRenderingVertexShaderCSO);
+	// auto deferredRenderingPixelShader = dx12w::compile_shader(L"ShaderFile/DeferredRendering/PixelShader.hlsl", "main", "ps_5_0");
+	std::ifstream deferredRenderingPixelShaderCSO{ L"ShaderFile/DeferredRendering/PixelShader.cso" ,std::ios::binary | std::ifstream::ate };
+	auto deferredRenderingPixelShader = dx12w::load_blob(deferredRenderingPixelShaderCSO);
+	deferredRenderingPixelShaderCSO.close();
 
 	// ダウンサンプリングを行うコンピュートシェーダ
-	auto downSamplingComputeShader = dx12w::compile_shader(L"ShaderFile/DownSampling/ComputeShader.hlsl", "main", "cs_5_0");
+	// auto downSamplingComputeShader = dx12w::compile_shader(L"ShaderFile/DownSampling/ComputeShader.hlsl", "main", "cs_5_0");
+	std::ifstream downSamplingComputeShaderCSO{ L"ShaderFile/DownSampling/ComputeShader.cso" ,std::ios::binary | std::ifstream::ate };
+	auto downSamplingComputeShader = dx12w::load_blob(downSamplingComputeShaderCSO);
+	downSamplingComputeShaderCSO.close();
 
 	// ポストエフェクトをかけるシェーダ
-	auto postEffectVertexShader = dx12w::compile_shader(L"ShaderFile/PostEffect/VertexShader.hlsl", "main", "vs_5_0");
-	auto postEffectPixelShader = dx12w::compile_shader(L"ShaderFile/PostEffect/PixelShader.hlsl", "main", "ps_5_0");
+	// auto postEffectVertexShader = dx12w::compile_shader(L"ShaderFile/PostEffect/VertexShader.hlsl", "main", "vs_5_0");
+	std::ifstream postEffectVertexShaderCSO{ L"ShaderFile/PostEffect/VertexShader.cso" ,std::ios::binary | std::ifstream::ate };
+	auto postEffectVertexShader = dx12w::load_blob(postEffectVertexShaderCSO);
+	postEffectVertexShaderCSO.close();
+	// auto postEffectPixelShader = dx12w::compile_shader(L"ShaderFile/PostEffect/PixelShader.hlsl", "main", "ps_5_0");
+	std::ifstream postEffectPixelShaderCSO{ L"ShaderFile/PostEffect/PixelShader.cso" ,std::ios::binary | std::ifstream::ate };
+	auto postEffectPixelShader = dx12w::load_blob(postEffectPixelShaderCSO);
+	postEffectPixelShaderCSO.close();
 
 	// ライトカリング用のシェーダ
-	auto lightCullingComputeShader = dx12w::compile_shader(L"ShaderFile/LightCulling/ComputeShader.hlsl", "main", "cs_5_0");
+	// auto lightCullingComputeShader = dx12w::compile_shader(L"ShaderFile/LightCulling/ComputeShader.hlsl", "main", "cs_5_0");
+	std::ifstream lightCullingComputeShaderCSO{ L"ShaderFile/LightCulling/ComputeShader.cso" ,std::ios::binary | std::ifstream::ate };
+	auto lightCullingComputeShader = dx12w::load_blob(lightCullingComputeShaderCSO);
+	lightCullingComputeShaderCSO.close();
 
 	// ssao用のシェーダ
-	auto ssaoComputeShader = dx12w::compile_shader(L"ShaderFile/SSAO/ComputeShader.hlsl", "main", "cs_5_0");
+	// auto ssaoComputeShader = dx12w::compile_shader(L"ShaderFile/SSAO/ComputeShader.hlsl", "main", "cs_5_0");
+	std::ifstream ssaoComputeShaderCSO{ L"ShaderFile/SSAO/ComputeShader.cso" ,std::ios::binary | std::ifstream::ate };
+	auto ssaoComputeShader = dx12w::load_blob(ssaoComputeShaderCSO);
+	ssaoComputeShaderCSO.close();
 
 
 	// 
@@ -783,7 +822,7 @@ int main()
 	auto deferredRenderingRootSignature = dx12w::create_root_signature(device.get(),
 		{ {{/*CameraData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*LightData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV},{/*アルベドカラー、法線、ワールド座標、デプスバッファの順*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,4},
 		{/*シャドウマップ*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV,SHADOW_MAP_NUM},{/*ポイントライトのインデックスのリスト*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV},
-		{/*アンビエントオクルージョン*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV},{/*ShadowMapData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV}}},
+		{/*アンビエントオクルージョン*/D3D12_DESCRIPTOR_RANGE_TYPE_SRV},{/*ShadowMapData*/D3D12_DESCRIPTOR_RANGE_TYPE_CBV}} },
 		{ { D3D12_FILTER_MIN_MAG_MIP_LINEAR ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP ,D3D12_TEXTURE_ADDRESS_MODE_WRAP,D3D12_COMPARISON_FUNC_NEVER} });
 
 	auto deferredRenderringGraphicsPipelineState = dx12w::create_graphics_pipeline(device.get(), deferredRenderingRootSignature.get(),
@@ -845,7 +884,7 @@ int main()
 	pdx12::TPS tps{};
 	tps.eyeRadius = 5.f;
 	tps.eyeHeight = 5.f;
-	
+
 	LightData lightData{};
 	lightData.directionLight.dir = lightDir;
 	lightData.directionLight.color = lightColor;
@@ -1037,7 +1076,7 @@ int main()
 		}
 
 		// 以下, 更新された視点の情報からシェーダで使用する情報を更新する
-		
+
 		auto view = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
 
 		auto proj = DirectX::XMMatrixPerspectiveFovLH(
@@ -1054,7 +1093,7 @@ int main()
 		XMFLOAT3 lightPos{};
 		XMStoreFloat3(&lightPos, lightPosVector);
 		auto lightViewProj = XMMatrixLookAtLH(lightPosVector, XMLoadFloat3(&target), XMLoadFloat3(&up)) * XMMatrixOrthographicLH(100, 100, -100.f, 200.f);
-		
+
 		CameraData cameraData{};
 		cameraData.view = view;
 		cameraData.viewInv = XMMatrixInverse(nullptr, cameraData.view);
@@ -1087,14 +1126,14 @@ int main()
 			*mappedLightViewProj = lightViewProj * clop;
 			lightData.directionLightViewProj[i] = lightViewProj * clop;
 		}
-		
+
 
 		for (std::size_t i = 0; i < lightData.pointLightNum; i++)
 		{
 			lightData.pointLight[i].posInView = lightData.pointLight[i].pos;
 			pdx12::apply(lightData.pointLight[i].posInView, view);
 		}
-		
+
 		*mappedCameraDataPtr = cameraData;
 		*mappedLightDataPtr = lightData;
 
@@ -1222,7 +1261,7 @@ int main()
 
 			commandManager.get_list()->DrawInstanced(static_cast<UINT>(modelVertexNum), static_cast<UINT>(MODEL_NUM), 0, 0);
 
-			
+
 			// 地面の影
 			commandManager.get_list()->SetGraphicsRootSignature(groundRootSignature.get());
 			{
@@ -1238,7 +1277,7 @@ int main()
 			commandManager.get_list()->IASetVertexBuffers(0, 1, &peraPolygonVertexBufferView);
 
 			commandManager.get_list()->DrawInstanced(static_cast<UINT>(peraPolygonVertexNum), 1, 0, 0);
-			
+
 			dx12w::resource_barrior(commandManager.get_list(), shadowMapResource[i], D3D12_RESOURCE_STATE_COMMON);
 
 			commandManager.get_list()->Close();
@@ -1424,6 +1463,6 @@ int main()
 
 		swapChain->Present(1, 0);
 	}
-	
+
 	return 0;
 }
